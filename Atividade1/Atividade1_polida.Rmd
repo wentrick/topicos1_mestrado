@@ -1,21 +1,23 @@
 ---
 title: "Atividade 1 — Distribuição de Morgenstern Bivariada"
-subtitle: "Distribuições Bivariadas com Marginais Gamma"
-author: "Davi Wentrick"
+subtitle: "Métodos Multivariados e Machine Learning — PPGEST/UnB"
+author: ""
 date: "`r format(Sys.Date(), '%d de %B de %Y')`"
 output:
   html_document:
     theme: flatly
     highlight: tango
     toc: true
+    toc_depth: 3
     toc_float:
       collapsed: false
-    number_sections: False
+    number_sections: true
     df_print: kable
     code_folding: show
+    css: !expr NULL
 ---
 
-```{r include=FALSE}
+```{r setup, include=FALSE}
 Sys.setlocale("LC_ALL", "pt_BR.UTF-8")
 knitr::opts_chunk$set(
   echo = TRUE,
@@ -25,13 +27,12 @@ knitr::opts_chunk$set(
 )
 ```
 
+---
 
-## Exercicio 
+# Item (a): Função de Densidade
 
-### ITEM (a): Função de densidade correspondente à CDF do slide 15
+## Derivação da PDF bivariada
 
-\subsection{Derivação da PDF bivariada}
- 
 A CDF da distribuição de Morgenstern bivariada com marginais Gamma é:
 
 $$
@@ -52,7 +53,7 @@ $$
 F = u\,v\,\big[1 + \rho(1-u)(1-v)\big].
 $$
 
-#### Passo 1: Expansão do produto
+### Passo 1: Expansão do produto
 
 Expandindo os parênteses:
 
@@ -64,7 +65,7 @@ F &= u\,v\,\big[1 + \rho(1 - u - v + uv)\big] \\
 \end{aligned}
 $$
 
-#### Passo 2: Primeira derivada $\frac{\partial F}{\partial u}$
+### Passo 2: Primeira derivada $\frac{\partial F}{\partial u}$
 
 Derivando termo a termo em relação a $u$:
 
@@ -79,7 +80,7 @@ $$
 Observe que a expressão entre parênteses se fatoriza:
 
 $$
-1 - 2u - v + 2uv = (1-2u)(1-v),
+1 - 2u - v + 2uv = (1-2u)(1-v).
 $$
 
 Logo:
@@ -88,7 +89,7 @@ $$
 \boxed{\frac{\partial F}{\partial u} = v\,\big[1 + \rho(1-2u)(1-v)\big]}.
 $$
 
-#### Passo 3: Derivada cruzada $\frac{\partial^2 F}{\partial u\,\partial v}$
+### Passo 3: Derivada cruzada $\frac{\partial^2 F}{\partial u\,\partial v}$
 
 Derivamos o resultado do Passo 2 em relação a $v$. Como temos um produto de $v$ por uma função de $v$, aplicamos a regra do produto:
 
@@ -118,7 +119,7 @@ $$
 \boxed{\frac{\partial^2 F}{\partial u\,\partial v} = 1 + \rho(1-2u)(1-2v)}.
 $$
 
-#### Passo 4: Regra da cadeia (retorno às variáveis $x$ e $y$)
+### Passo 4: Regra da cadeia (retorno às variáveis $x$ e $y$)
 
 Lembrando que $u = F_X(x)$ e $v = F_Y(y)$, a regra da cadeia nos dá:
 
@@ -140,7 +141,7 @@ f_X(x) = \frac{x^{\alpha-1}\,e^{-x/\theta}}{\theta^\alpha\,\Gamma(\alpha)}, \qqu
 f_Y(y) = \frac{y^{\beta-1}\,e^{-y/\theta}}{\theta^\beta\,\Gamma(\beta)}.
 $$
 
-#### Verificação
+### Verificação
 
 Tomando $\rho = 0$:
 
@@ -150,7 +151,9 @@ $$
 
 que é o produto das marginais, confirmando a independência quando $\rho = 0$.
 
-```{r}
+## Implementação e gráficos
+
+```{r funcoes-modelo}
 # --- Funções do modelo ---
 
 # CDF bivariada
@@ -170,8 +173,9 @@ pdf_morgenstern <- function(x, y, alpha, beta, theta, rho) {
 }
 ```
 
+### Contornos da PDF bivariada
 
-```{r fig.width=10, fig.height=10}
+```{r contornos, fig.width=10, fig.height=10, fig.cap="Contornos da PDF bivariada de Morgenstern-Gamma para diferentes combinações de parâmetros."}
 # --- Plots da PDF bivariada ---
 
 # Configuração de grade
@@ -206,11 +210,11 @@ for (p in params_list) {
           main = p$title, col = heat.colors(20))
   title(sub = "Contornos da PDF bivariada", cex.sub = 0.8)
 }
-
 ```
 
+### Superfícies 3D da PDF bivariada
 
-```{r fig.width=10, fig.height=10}
+```{r superficie-3d, fig.width=10, fig.height=10, fig.cap="Gráficos de perspectiva 3D da PDF bivariada."}
 # Plot 3D (perspectiva)
 par(mfrow = c(2, 2), mar = c(1, 1, 3, 1))
 
@@ -232,12 +236,13 @@ for (p in params_list) {
         main = p$title, col = "lightblue", shade = 0.3,
         ticktype = "detailed", cex.main = 0.9)
 }
-
-
 ```
 
+---
 
-### ITEM (b): Estimadores de Máxima Verossimilhança (EMV)
+# Item (b): Estimadores de Máxima Verossimilhança (EMV)
+
+## Construção da log-verossimilhança
 
 Pela PDF que derivamos no item (a), cada observação contribui com:
 
@@ -245,7 +250,7 @@ $$
 \log f_{X,Y}(x_i, y_i) = \log\Big[f_X(x_i)\,f_Y(y_i)\,\big(1 + \rho\,h_i\big)\Big].
 $$
 
-Usando a propriedade $\log()$:
+Usando a propriedade $\log(a \cdot b \cdot c) = \log a + \log b + \log c$:
 
 $$
 \log f_{X,Y}(x_i, y_i) = \underbrace{\log f_X(x_i)}_{\text{parte (A)}} + \underbrace{\log f_Y(y_i)}_{\text{parte (B)}} + \underbrace{\log(1 + \rho\,h_i)}_{\text{parte (C)}},
@@ -255,7 +260,7 @@ onde $h_i = (1 - 2F_X(x_i))(1 - 2F_Y(y_i))$.
 
 Vamos expandir cada parte separadamente.
 
-#### Parte (A) --- Expandindo $\log f_X(x_i)$
+### Parte (A) --- Expandindo $\log f_X(x_i)$
 
 A densidade da $\text{Gamma}(\alpha, \theta)$ é:
 
@@ -285,7 +290,7 @@ $$
 \boxed{\log f_X(x_i) = (\alpha-1)\log x_i - \frac{x_i}{\theta} - \alpha\log\theta - \log\Gamma(\alpha)}.
 $$
 
-#### Parte (B) --- Expandindo $\log f_Y(y_i)$
+### Parte (B) --- Expandindo $\log f_Y(y_i)$
 
 O procedimento é idêntico ao da Parte (A), trocando $\alpha \to \beta$ e $x_i \to y_i$. A densidade marginal é:
 
@@ -299,7 +304,7 @@ $$
 \boxed{\log f_Y(y_i) = (\beta-1)\log y_i - \frac{y_i}{\theta} - \beta\log\theta - \log\Gamma(\beta)}.
 $$
 
-#### Parte (C) --- O termo da cópula
+### Parte (C) --- O termo da cópula
 
 Este termo fica como está:
 
@@ -317,7 +322,7 @@ sendo $F_X(x_i;\alpha,\theta) = \frac{1}{\Gamma(\alpha)}\int_0^{x_i/\theta} t^{\
 
 Note que este é o termo que **acopla todos os parâmetros**: $\alpha$, $\beta$, $\theta$ e $\rho$ aparecem juntos dentro de $h_i$.
 
-### Log-verossimilhança completa
+## Log-verossimilhança completa
 
 Somando as partes (A), (B) e (C) para todas as $n$ observações:
 
@@ -339,9 +344,11 @@ onde definimos as **estatísticas suficientes**:
 - $S_x = \sum_{i=1}^n \log x_i$ e $S_y = \sum_{i=1}^n \log y_i$ (somas dos log-dados),
 - $\bar{x}$ e $\bar{y}$ (médias amostrais).
 
-### Valores iniciais 
+## Valores iniciais via Método dos Momentos
 
-#### Momentos da distribuição Gamma
+Antes de rodar a otimização numérica, precisamos de um **chute inicial** para os parâmetros. O método dos momentos fornece estimativas razoáveis igualando os momentos teóricos da Gamma aos momentos amostrais.
+
+### Momentos da distribuição Gamma
 
 Se $X \sim \text{Gamma}(\alpha, \theta)$, os dois primeiros momentos são:
 
@@ -363,7 +370,7 @@ $$
 s_X^2 = \frac{1}{n-1}\sum_{i=1}^n (x_i - \bar{X})^2 \qquad \text{(variância amostral)}.
 $$
 
-#### Resolvendo para os parâmetros
+### Resolvendo para os parâmetros
 
 Igualamos momentos teóricos aos amostrais:
 
@@ -387,7 +394,7 @@ $$
 \alpha = \frac{\bar{X}}{\theta} = \frac{\bar{X}}{\;s_X^2/\bar{X}\;} = \frac{\bar{X}^2}{s_X^2}.
 $$
 
-#### Para a marginal de $Y$
+### Para a marginal de $Y$
 
 O mesmo procedimento para $Y \sim \text{Gamma}(\beta, \theta)$:
 
@@ -395,11 +402,9 @@ $$
 \theta = \frac{s_Y^2}{\bar{Y}}, \qquad \beta = \frac{\bar{Y}^2}{s_Y^2}.
 $$
 
-#### Para o $\theta$ 
+### Parâmetro de escala $\theta$ compartilhado
 
-No nosso modelo, as duas marginais compartilham o **mesmo** parâmetro de escala $\theta$. Mas pela marginal de $X$ obtemos $\theta = s_X^2/\bar{X}$, e pela marginal de $Y$ obtemos $\theta = s_Y^2/\bar{Y}$. 
-
-Vamos é tomar a **média** dos dois:
+No nosso modelo, as duas marginais compartilham o **mesmo** parâmetro de escala $\theta$. Mas pela marginal de $X$ obtemos $\theta = s_X^2/\bar{X}$, e pela marginal de $Y$ obtemos $\theta = s_Y^2/\bar{Y}$. Tomamos a **média** dos dois como compromisso:
 
 $$
 \hat{\theta}_0 = \frac{1}{2}\left(\frac{s_X^2}{\bar{X}} + \frac{s_Y^2}{\bar{Y}}\right).
@@ -411,18 +416,19 @@ $$
 \hat{\alpha}_0 = \frac{\bar{X}}{\hat{\theta}_0}, \qquad \hat{\beta}_0 = \frac{\bar{Y}}{\hat{\theta}_0}.
 $$
 
-#### Parâmetro de dependência $\rho$
+### Parâmetro de dependência $\rho$
 
-Para $\rho$ vamos usar um valor conservador:
+Para $\rho$ usamos um valor conservador:
 
 $$
 \hat{\rho}_0 = 0{,}1 \times \text{sign}(r_{XY}),
 $$
 
-onde $r_{XY}$ é a correlação de Pearson amostral. Ou seja, se os dados mostram correlação positiva, começamos com $\rho_0 = +0{,}1$; se negativa, $\rho_0 = -0{,}1$. Um valor pequeno e na direção certa.
+onde $r_{XY}$ é a correlação de Pearson amostral. Se os dados mostram correlação positiva, começamos com $\rho_0 = +0{,}1$; se negativa, $\rho_0 = -0{,}1$.
 
+## Implementação das estratégias numéricas
 
-```{r}
+```{r loglik}
 # Função de log-verossimilhança negativa
 neg_loglik <- function(par, x, y) {
   alpha <- par[1]
@@ -541,8 +547,9 @@ fit_morgenstern <- function(x, y, verbose = TRUE) {
 }
 ```
 
+## Validação com dados simulados
 
-```{r}
+```{r simulacao}
 # --- Teste com dados simulados para validar ---
 set.seed(42)
 n_sim <- 500
@@ -561,26 +568,26 @@ x_sim <- qgamma(u1_sim, shape = alpha_true, rate = 1/theta_true)
 y_sim <- qgamma(u2_sim, shape = beta_true, rate = 1/theta_true)
 ```
 
-
-```{r echo=FALSE}
-cat("\n--- Validação com dados simulados ---\n")
+```{r validacao-info, echo=FALSE}
 cat(sprintf("Parâmetros verdadeiros: alpha=%.1f, beta=%.1f, theta=%.1f, rho=%.1f\n",
             alpha_true, beta_true, theta_true, rho_true))
 ```
 
-
-```{r}
+```{r validacao-fit}
 fit_sim <- fit_morgenstern(x_sim, y_sim)
 ```
 
-
-```{r echo=FALSE}
+```{r validacao-resultado, echo=FALSE}
 cat(sprintf("Melhor método: %s\n", fit_sim$best_method))
 ```
 
-### ITEM (c): Aplicação aos dados de income-consumption
+---
 
-```{r}
+# Item (c): Aplicação aos dados de *income-consumption*
+
+## Carregamento e preparação dos dados
+
+```{r dados}
 # Carregar dados
 rfam  <- read.csv("rfam08.csv")    # Y = renda
 risfam <- read.csv("risfam08.csv") # C = consumo
@@ -593,16 +600,13 @@ colnames(dados) <- c("nquest", "income", "consumption")
 dados <- dados[dados$income > 0 & dados$consumption > 0, ]
 ```
 
-
-```{r echo=FALSE}
+```{r dados-n, echo=FALSE}
 cat(sprintf("Número de famílias após limpeza: %d\n", nrow(dados)))
 ```
 
-#### Estatísticas descritivas
+## Estatísticas descritivas
 
-```{r echo=FALSE}
-# Estatísticas descritivas
-cat("\n--- Estatísticas descritivas ---\n")
+```{r descritivas, echo=FALSE}
 cat(sprintf("Renda:    min=%.2f, mediana=%.2f, média=%.2f, max=%.2f, sd=%.2f\n",
             min(dados$income), median(dados$income), mean(dados$income),
             max(dados$income), sd(dados$income)))
@@ -612,29 +616,21 @@ cat(sprintf("Consumo:  min=%.2f, mediana=%.2f, média=%.2f, max=%.2f, sd=%.2f\n"
 cat(sprintf("Correlação de Pearson: %.4f\n", cor(dados$income, dados$consumption)))
 ```
 
-
-```{r}
+```{r escala}
 # Escalonar os dados para evitar problemas numéricos (dividir por 1000)
 x_data <- dados$consumption / 1000
 y_data <- dados$income / 1000
 ```
 
-
-```{r echo=FALSE}
-cat(sprintf("\nDados escalados (/ 1000):\n"))
+```{r escala-info, echo=FALSE}
+cat(sprintf("Dados escalados (/ 1000):\n"))
 cat(sprintf("Consumo/1000: média=%.4f, sd=%.4f\n", mean(x_data), sd(x_data)))
 cat(sprintf("Renda/1000:   média=%.4f, sd=%.4f\n", mean(y_data), sd(y_data)))
 ```
 
-#### Ajuste do modelo FGM-Gamma
+## Ajuste do modelo FGM-Gamma
 
-```{r echo=FALSE}
-# Ajuste do modelo FGM-Gamma
-cat("\n--- Ajustando modelo de Morgenstern bivariado com marginais Gamma ---\n")
-```
-
-
-```{r}
+```{r ajuste}
 fit_data <- fit_morgenstern(x_data, y_data)
 
 # Parâmetros estimados
@@ -645,9 +641,8 @@ theta_hat <- par_hat[3]
 rho_hat   <- par_hat[4]
 ```
 
-
-```{r echo=FALSE}
-cat(sprintf("\nParâmetros estimados (melhor método: %s):\n", fit_data$best_method))
+```{r ajuste-resultado, echo=FALSE}
+cat(sprintf("Parâmetros estimados (melhor método: %s):\n", fit_data$best_method))
 cat(sprintf("  alpha = %.6f\n", alpha_hat))
 cat(sprintf("  beta  = %.6f\n", beta_hat))
 cat(sprintf("  theta = %.6f\n", theta_hat))
@@ -655,10 +650,9 @@ cat(sprintf("  rho   = %.6f\n", rho_hat))
 cat(sprintf("  log-verossimilhança = %.4f\n", fit_data$best$loglik))
 ```
 
-#### Critérios de informação 
+## Critérios de informação
 
-```{r}
-# --- Critérios de informação ---
+```{r criterios}
 n <- nrow(dados)
 k <- 4  # número de parâmetros
 ll_max <- fit_data$best$loglik
@@ -667,19 +661,14 @@ AIC_val <- -2 * ll_max + 2 * k
 BIC_val <- -2 * ll_max + k * log(n)
 ```
 
-
-```{r echo=FALSE}
-cat(sprintf("\n--- Critérios de Informação ---\n"))
-cat(sprintf("  AIC = %.4f\n", AIC_val))
-cat(sprintf("  BIC = %.4f\n", BIC_val))
+```{r criterios-resultado, echo=FALSE}
+cat(sprintf("AIC = %.4f\n", AIC_val))
+cat(sprintf("BIC = %.4f\n", BIC_val))
 ```
 
-#### Análise da qualidade do ajuste 
+## Análise da qualidade do ajuste
 
-```{r fig.width=10, fig.height=5}
-# --- Análise da qualidade do ajuste ---
-
-# 1) Verificação das marginais: QQ-plot contra Gamma ajustada
+```{r diagnostico, fig.width=12, fig.height=8, fig.cap="Diagnóstico do ajuste: QQ-plots marginais, histogramas com densidades Gamma ajustadas, scatterplot com contornos do modelo e resultados dos testes KS."}
 par(mfrow = c(2, 3))
 
 # QQ-plot marginal X (consumo)
@@ -699,19 +688,19 @@ plot(q_y_theo, q_y, pch = ".", col = "blue",
      main = "QQ-plot: Renda vs Gamma")
 abline(0, 1, col = "red", lwd = 2)
 
-# 2) Histograma marginal do consumo com densidade ajustada
+# Histograma marginal do consumo com densidade ajustada
 hist(x_data, breaks = 60, prob = TRUE, col = "lightgray",
      main = "Histograma: Consumo", xlab = "Consumo/1000", xlim = c(0, quantile(x_data, 0.99)))
 curve(dgamma(x, shape = alpha_hat, rate = 1/theta_hat), add = TRUE, col = "red", lwd = 2)
 legend("topright", "Gamma ajustada", col = "red", lwd = 2, cex = 0.8)
 
-# 3) Histograma marginal da renda com densidade ajustada
+# Histograma marginal da renda com densidade ajustada
 hist(y_data, breaks = 60, prob = TRUE, col = "lightgray",
      main = "Histograma: Renda", xlab = "Renda/1000", xlim = c(0, quantile(y_data, 0.99)))
 curve(dgamma(x, shape = beta_hat, rate = 1/theta_hat), add = TRUE, col = "blue", lwd = 2)
 legend("topright", "Gamma ajustada", col = "blue", lwd = 2, cex = 0.8)
 
-# 4) Scatterplot com contornos do modelo ajustado
+# Scatterplot com contornos do modelo ajustado
 x_range <- seq(0.01, quantile(x_data, 0.98), length.out = 80)
 y_range <- seq(0.01, quantile(y_data, 0.98), length.out = 80)
 
@@ -727,8 +716,7 @@ plot(x_data, y_data, pch = ".", col = rgb(0, 0, 0, 0.1),
      xlim = range(x_range), ylim = range(y_range))
 contour(x_range, y_range, z_fit, nlevels = 15, add = TRUE, col = "red", lwd = 1.5)
 
-# 5) CDF empírica bivariada vs teórica (avaliada em pontos da grade)
-# Teste de Kolmogorov-Smirnov para cada marginal
+# Testes de Kolmogorov-Smirnov
 ks_x <- ks.test(x_data, "pgamma", shape = alpha_hat, rate = 1/theta_hat)
 ks_y <- ks.test(y_data, "pgamma", shape = beta_hat, rate = 1/theta_hat)
 
@@ -738,32 +726,10 @@ text(0.5, 0.8, "Testes de Kolmogorov-Smirnov", cex = 1.3, font = 2)
 text(0.5, 0.65, sprintf("Consumo: D=%.4f, p-valor=%.4f", ks_x$statistic, ks_x$p.value), cex = 1.1)
 text(0.5, 0.50, sprintf("Renda:   D=%.4f, p-valor=%.4f", ks_y$statistic, ks_y$p.value), cex = 1.1)
 text(0.5, 0.30, sprintf("rho estimado = %.4f", rho_hat), cex = 1.1)
-
 ```
 
-Os QQ-plots de ambas as marginais revelam desvios nas caudas superiores, com os quantis amostrais se afastando da reta de referência para valores elevados. Esse comportamento indica que os dados possuem caudas mais pesadas do que a distribuição Gamma é capaz de acomodar. Os testes de Kolmogorov-Smirnov corroboram essa conclusão: os p-valores obtidos para consumo ($D = 0{,}0896$, $p \approx 0$) e renda ($D = 0{,}0505$, $p \approx 0$) levam à rejeição da hipótese de que as marginais seguem distribuições Gamma, confirmando formalmente a inadequação das marginais.
+## Conclusão
 
-Além disso, o parâmetro de dependência estimado atingiu a fronteira do espaço paramétrico ($\hat{\rho} = 1{,}0$), evidenciando que a cópula FGM está saturada: mesmo em sua capacidade máxima de modelar dependência, ela é insuficiente frente à dependência observada nos dados. Portanto, o modelo FGM-Gamma é inadequado para os dados de \textit{income-consumption}, tanto na especificação das marginais quanto na estrutura de dependência.
+Os QQ-plots de ambas as marginais revelam desvios sistemáticos nas caudas superiores, com os quantis amostrais se afastando da reta de referência para valores elevados. Esse comportamento indica que os dados possuem caudas mais pesadas do que a distribuição Gamma é capaz de acomodar. Os testes de Kolmogorov-Smirnov corroboram essa conclusão: os p-valores obtidos para consumo ($D = 0{,}0896$, $p \approx 0$) e renda ($D = 0{,}0505$, $p \approx 0$) levam à rejeição da hipótese de que as marginais seguem distribuições Gamma, confirmando formalmente a inadequação das marginais.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Além disso, o parâmetro de dependência estimado atingiu a fronteira do espaço paramétrico ($\hat{\rho} = 1{,}0$), evidenciando que a cópula FGM está saturada: mesmo em sua capacidade máxima de modelar dependência ($\tau_{\max} = 2/9 \approx 0{,}222$), ela é insuficiente frente à dependência observada nos dados ($\hat{\tau} = 0{,}642$). Portanto, o modelo FGM-Gamma é inadequado para os dados de *income-consumption*, tanto na especificação das marginais quanto na estrutura de dependência.
