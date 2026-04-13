@@ -26,12 +26,10 @@ knitr::opts_chunk$set(
 ```
 
 
-## Exercicio 
+## Exercício 1
 
-### ITEM (a): Função de densidade correspondente à CDF do slide 15
+### Item (a): Função de densidade bivariada
 
-\subsection{Derivação da PDF bivariada}
- 
 A CDF da distribuição de Morgenstern bivariada com marginais Gamma é:
 
 $$
@@ -237,7 +235,7 @@ for (p in params_list) {
 ```
 
 
-### ITEM (b): Estimadores de Máxima Verossimilhança (EMV)
+### Item (b): Estimadores de máxima verossimilhança
 
 Pela PDF que derivamos no item (a), cada observação contribui com:
 
@@ -255,7 +253,7 @@ onde $h_i = (1 - 2F_X(x_i))(1 - 2F_Y(y_i))$.
 
 Vamos expandir cada parte separadamente.
 
-#### Parte (A) --- Expandindo $\log f_X(x_i)$
+#### Parte (A) — Expandindo $\log f_X(x_i)$
 
 A densidade da $\text{Gamma}(\alpha, \theta)$ é:
 
@@ -285,7 +283,7 @@ $$
 \boxed{\log f_X(x_i) = (\alpha-1)\log x_i - \frac{x_i}{\theta} - \alpha\log\theta - \log\Gamma(\alpha)}.
 $$
 
-#### Parte (B) --- Expandindo $\log f_Y(y_i)$
+#### Parte (B) — Expandindo $\log f_Y(y_i)$
 
 O procedimento é idêntico ao da Parte (A), trocando $\alpha \to \beta$ e $x_i \to y_i$. A densidade marginal é:
 
@@ -299,7 +297,7 @@ $$
 \boxed{\log f_Y(y_i) = (\beta-1)\log y_i - \frac{y_i}{\theta} - \beta\log\theta - \log\Gamma(\beta)}.
 $$
 
-#### Parte (C) --- O termo da cópula
+#### Parte (C) — O termo da cópula
 
 Este termo fica como está:
 
@@ -317,7 +315,7 @@ sendo $F_X(x_i;\alpha,\theta) = \frac{1}{\Gamma(\alpha)}\int_0^{x_i/\theta} t^{\
 
 Note que este é o termo que **acopla todos os parâmetros**: $\alpha$, $\beta$, $\theta$ e $\rho$ aparecem juntos dentro de $h_i$.
 
-### Log-verossimilhança completa
+#### Log-verossimilhança completa
 
 Somando as partes (A), (B) e (C) para todas as $n$ observações:
 
@@ -339,9 +337,9 @@ onde definimos as **estatísticas suficientes**:
 - $S_x = \sum_{i=1}^n \log x_i$ e $S_y = \sum_{i=1}^n \log y_i$ (somas dos log-dados),
 - $\bar{x}$ e $\bar{y}$ (médias amostrais).
 
-### Valores iniciais 
+#### Valores iniciais
 
-#### Momentos da distribuição Gamma
+**Momentos da distribuição Gamma**
 
 Se $X \sim \text{Gamma}(\alpha, \theta)$, os dois primeiros momentos são:
 
@@ -363,7 +361,7 @@ $$
 s_X^2 = \frac{1}{n-1}\sum_{i=1}^n (x_i - \bar{X})^2 \qquad \text{(variância amostral)}.
 $$
 
-#### Resolvendo para os parâmetros
+**Resolvendo para os parâmetros**
 
 Igualamos momentos teóricos aos amostrais:
 
@@ -387,7 +385,7 @@ $$
 \alpha = \frac{\bar{X}}{\theta} = \frac{\bar{X}}{\;s_X^2/\bar{X}\;} = \frac{\bar{X}^2}{s_X^2}.
 $$
 
-#### Para a marginal de $Y$
+**Para a marginal de $Y$**
 
 O mesmo procedimento para $Y \sim \text{Gamma}(\beta, \theta)$:
 
@@ -395,11 +393,11 @@ $$
 \theta = \frac{s_Y^2}{\bar{Y}}, \qquad \beta = \frac{\bar{Y}^2}{s_Y^2}.
 $$
 
-#### Para o $\theta$ 
+**Para o $\theta$**
 
 No nosso modelo, as duas marginais compartilham o **mesmo** parâmetro de escala $\theta$. Mas pela marginal de $X$ obtemos $\theta = s_X^2/\bar{X}$, e pela marginal de $Y$ obtemos $\theta = s_Y^2/\bar{Y}$. 
 
-Vamos é tomar a **média** dos dois:
+Vamos então tomar a **média** dos dois:
 
 $$
 \hat{\theta}_0 = \frac{1}{2}\left(\frac{s_X^2}{\bar{X}} + \frac{s_Y^2}{\bar{Y}}\right).
@@ -411,7 +409,7 @@ $$
 \hat{\alpha}_0 = \frac{\bar{X}}{\hat{\theta}_0}, \qquad \hat{\beta}_0 = \frac{\bar{Y}}{\hat{\theta}_0}.
 $$
 
-#### Parâmetro de dependência $\rho$
+**Parâmetro de dependência $\rho$**
 
 Para $\rho$ vamos usar um valor conservador:
 
@@ -578,7 +576,7 @@ fit_sim <- fit_morgenstern(x_sim, y_sim)
 cat(sprintf("Melhor método: %s\n", fit_sim$best_method))
 ```
 
-### ITEM (c): Aplicação aos dados de income-consumption
+### Item (c): Aplicação aos dados
 
 ```{r}
 # Carregar dados
@@ -621,7 +619,7 @@ y_data <- dados$income / 1000
 
 
 ```{r echo=FALSE}
-cat(sprintf("\nDados escalados (/ 1000):\n"))
+cat("\nDados escalados (/ 1000):\n")
 cat(sprintf("Consumo/1000: média=%.4f, sd=%.4f\n", mean(x_data), sd(x_data)))
 cat(sprintf("Renda/1000:   média=%.4f, sd=%.4f\n", mean(y_data), sd(y_data)))
 ```
@@ -655,7 +653,7 @@ cat(sprintf("  rho   = %.6f\n", rho_hat))
 cat(sprintf("  log-verossimilhança = %.4f\n", fit_data$best$loglik))
 ```
 
-#### Critérios de informação 
+#### Critérios de informação
 
 ```{r}
 # --- Critérios de informação ---
@@ -669,14 +667,14 @@ BIC_val <- -2 * ll_max + k * log(n)
 
 
 ```{r echo=FALSE}
-cat(sprintf("\n--- Critérios de Informação ---\n"))
+cat("\n--- Critérios de Informação ---\n")
 cat(sprintf("  AIC = %.4f\n", AIC_val))
 cat(sprintf("  BIC = %.4f\n", BIC_val))
 ```
 
-#### Análise da qualidade do ajuste 
+#### Análise da qualidade do ajuste
 
-```{r fig.width=10, fig.height=5}
+```{r fig.width=10, fig.height=8}
 # --- Análise da qualidade do ajuste ---
 
 # 1) Verificação das marginais: QQ-plot contra Gamma ajustada
@@ -745,8 +743,683 @@ Os QQ-plots de ambas as marginais revelam desvios nas caudas superiores, com os 
 
 Além disso, o parâmetro de dependência estimado atingiu a fronteira do espaço paramétrico ($\hat{\rho} = 1{,}0$), evidenciando que a cópula FGM está saturada: mesmo em sua capacidade máxima de modelar dependência, ela é insuficiente frente à dependência observada nos dados. Portanto, o modelo FGM-Gamma é inadequado para os dados de \textit{income-consumption}, tanto na especificação das marginais quanto na estrutura de dependência.
 
+## Exercício 2
+
+### Modelo 1: Bivariada com Marginais Fréchet
+
+A CDF conjunta e dada por
+$$
+F_{X,Y}(x,y) = \exp\left\{-\left(\frac{x}{\sigma_1}\right)^{-\alpha} - \left(\frac{y}{\sigma_2}\right)^{-\alpha} + \rho\left[\left(\frac{x}{\sigma_1}\right)^{\alpha} + \left(\frac{y}{\sigma_2}\right)^{\alpha}\right]^{-1}\right\},
+$$
+onde $x,y \geq 0$, $\sigma_1, \sigma_2 > 0$, $\alpha > 0$ e $0 \leq \rho \leq 1$.
+
+As marginais sao Frechet univariadas:
+$$
+F_X(x) = \exp\left\{-\left(\frac{x}{\sigma_1}\right)^{-\alpha}\right\}, \quad
+F_Y(y) = \exp\left\{-\left(\frac{y}{\sigma_2}\right)^{-\alpha}\right\}.
+$$
+
+O parametro $\rho$ controla a dependencia entre $X$ e $Y$: quando $\rho=0$, as variaveis sao independentes.
+
+```{r funcoes-modelo-i}
+# CDF bivariada Frechet
+CDF_frechet <- function(x, y, s1, s2, alpha, rho) {
+  a <- (x / s1)^alpha
+  b <- (y / s2)^alpha
+  exp(-1/a - 1/b + rho / (a + b))
+}
+
+# CDF marginal Frechet
+CDF_marginal <- function(x, sigma, alpha) {
+  exp(-(x / sigma)^(-alpha))
+}
+```
 
 
+#### Item (a): Função de densidade e gráficos {.tabset}
+
+##### Derivação
+
+Escrevendo $F = e^g$ com $g = -a^{-1} - b^{-1} + \rho(a+b)^{-1}$, $a = (x/\sigma_1)^\alpha$, $b = (y/\sigma_2)^\alpha$, a densidade é $f = F \cdot (g_{xy} + g_x g_y)$. Aplicando a regra da cadeia (procedimento análogo ao Exercício 1), obtém-se:
+
+**PDF bivariada:**
+$$
+\boxed{f(x,y) = \exp\left\{-\frac{1}{a}-\frac{1}{b}+\frac{\rho}{a+b}\right\} \cdot \left[\frac{2\rho\,\alpha^2\,a\,b}{xy(a+b)^3} + \frac{\alpha^2}{xy}\left(\frac{1}{a}-\frac{\rho\,a}{(a+b)^2}\right)\left(\frac{1}{b}-\frac{\rho\,b}{(a+b)^2}\right)\right]}
+$$
+
+```{r densidade-analitica-i}
+# Densidade analitica
+density_frechet <- function(x, y, s1, s2, alpha, rho) {
+  a <- (x / s1)^alpha
+  b <- (y / s2)^alpha
+  S <- a + b
+  
+  g     <- -1/a - 1/b + rho / S
+  g_x   <- (alpha / x) * (1/a - rho * a / S^2)
+  g_y   <- (alpha / y) * (1/b - rho * b / S^2)
+  g_xy  <- 2 * rho * alpha^2 * a * b / (x * y * S^3)
+  
+  Fval <- exp(g)
+  fval <- Fval * (g_xy + g_x * g_y)
+  fval <- ifelse(fval < 0 | is.na(fval), 0, fval)
+  return(fval)
+}
+
+# Verificacao numerica
+density_frechet_num <- function(x, y, s1, s2, alpha, rho, h = 1e-5) {
+  (CDF_frechet(x+h, y+h, s1, s2, alpha, rho) -
+   CDF_frechet(x+h, y,   s1, s2, alpha, rho) -
+   CDF_frechet(x,   y+h, s1, s2, alpha, rho) +
+   CDF_frechet(x,   y,   s1, s2, alpha, rho)) / h^2
+}
+
+# Teste de consistencia
+cat("Verificacao: analitica vs numerica\n")
+pts <- data.frame(x = c(1, 2, 0.5), y = c(1, 3, 1.5))
+for (i in 1:nrow(pts)) {
+  fa <- density_frechet(pts$x[i], pts$y[i], 1, 1, 2, 0.5)
+  fn <- density_frechet_num(pts$x[i], pts$y[i], 1, 1, 2, 0.5)
+  cat(sprintf("  (%g,%g): analitica=%.6f, numerica=%.6f, diff=%.2e\n",
+              pts$x[i], pts$y[i], fa, fn, abs(fa - fn)))
+}
+```
+
+
+##### Gráficos 3D
+
+```{r plots3d-i, fig.height=5, fig.width=14}
+x_vals <- seq(0.05, 5, length.out = 80)
+y_vals <- seq(0.05, 5, length.out = 80)
+
+par(mfrow = c(1, 3), mar = c(2, 2, 3, 1))
+for (rho_val in c(0, 0.5, 0.9)) {
+  z <- outer(x_vals, y_vals, Vectorize(function(x, y)
+    density_frechet(x, y, 1, 1, 2, rho_val)))
+  
+  persp(x_vals, y_vals, z,
+        theta = 30, phi = 25, expand = 0.6,
+        col = "lightblue", shade = 0.4,
+        xlab = "x", ylab = "y", zlab = "f(x,y)",
+        main = bquote(sigma[1] == 1 ~ "," ~ sigma[2] == 1 ~ "," ~ alpha == 2 ~ "," ~ rho == .(rho_val)),
+        cex.main = 1.2)
+}
+```
+
+
+##### Curvas de nível
+
+```{r contorno-i, fig.height=5, fig.width=14}
+par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
+for (rho_val in c(0, 0.5, 0.9)) {
+  z <- outer(x_vals, y_vals, Vectorize(function(x, y)
+    density_frechet(x, y, 1, 1, 2, rho_val)))
+  
+  image(x_vals, y_vals, z, col = terrain.colors(20),
+        xlab = "x", ylab = "y",
+        main = bquote(rho == .(rho_val)))
+  contour(x_vals, y_vals, z, nlevels = 20, add = TRUE, col = "white")
+}
+```
+
+**Interpretacao:** Quando $\rho = 0$, as curvas de nivel sao mais "espalhadas", refletindo independencia. A medida que $\rho$ cresce, a massa se concentra ao longo da diagonal $x \approx y$, indicando dependencia positiva crescente.
+
+
+#### Item (b): Estimadores de máxima verossimilhança
+
+Para uma amostra $(x_1, y_1), \ldots, (x_n, y_n)$ i.i.d., a log-verossimilhança é:
+$$
+\ell(\sigma_1, \sigma_2, \alpha, \rho) = \sum_{i=1}^n \left[g(x_i, y_i) + \ln\left(g_{xy}^{(i)} + g_x^{(i)} g_y^{(i)}\right)\right],
+$$
+onde $g$, $g_x$, $g_y$ e $g_{xy}$ são as funções derivadas no Item (a). Não há forma fechada — utilizamos otimização numérica via `optim` (L-BFGS-B + Nelder-Mead).
+
+```{r mle-modelo-i}
+# Log-verossimilhanca (vetorizada)
+loglik_frechet <- function(par, x_data, y_data) {
+  s1 <- par[1]; s2 <- par[2]; alpha <- par[3]; rho <- par[4]
+  if (s1 <= 0 || s2 <= 0 || alpha <= 0 || rho < 0 || rho >= 1) return(-1e15)
+  
+  a <- (x_data / s1)^alpha
+  b <- (y_data / s2)^alpha
+  S <- a + b
+  
+  g    <- -1/a - 1/b + rho / S
+  g_x  <- (alpha / x_data) * (1/a - rho * a / S^2)
+  g_y  <- (alpha / y_data) * (1/b - rho * b / S^2)
+  g_xy <- 2 * rho * alpha^2 * a * b / (x_data * y_data * S^3)
+  
+  kernel <- g_xy + g_x * g_y
+  if (any(kernel <= 0, na.rm = TRUE)) return(-1e15)
+  
+  ll <- sum(g + log(kernel))
+  if (is.na(ll) || is.infinite(ll)) return(-1e15)
+  return(ll)
+}
+
+# Funcao de ajuste com multiplos pontos iniciais
+fit_frechet_biv <- function(x_data, y_data, n_starts = 5) {
+  starts_list <- list(
+    c(median(x_data), median(y_data), 1.0, 0.3),
+    c(mean(x_data),   mean(y_data),   0.5, 0.5),
+    c(sd(x_data),     sd(y_data),     2.0, 0.1),
+    c(quantile(x_data, 0.75), quantile(y_data, 0.75), 1.5, 0.4),
+    c(median(x_data)*0.5, median(y_data)*0.5, 0.8, 0.2)
+  )
+  
+  best <- list(value = Inf)
+  
+  for (st in starts_list) {
+    # L-BFGS-B
+    res <- tryCatch(
+      optim(st, function(p) -loglik_frechet(p, x_data, y_data),
+            method = "L-BFGS-B",
+            lower = c(1e-3, 1e-3, 1e-3, 0),
+            upper = c(Inf, Inf, 20, 0.999),
+            control = list(maxit = 5000)),
+      error = function(e) NULL)
+    if (!is.null(res) && res$value < best$value) best <- res
+    
+    # Nelder-Mead
+    res2 <- tryCatch(
+      optim(st, function(p) -loglik_frechet(p, x_data, y_data),
+            method = "Nelder-Mead",
+            control = list(maxit = 10000)),
+      error = function(e) NULL)
+    if (!is.null(res2) && res2$value < best$value &&
+        all(res2$par[1:3] > 0) && res2$par[4] >= 0 && res2$par[4] < 1)
+      best <- res2
+  }
+  
+  k <- 4; n <- length(x_data)
+  ll <- -best$value
+  list(par = best$par,
+       loglik = ll,
+       AIC = -2*ll + 2*k,
+       BIC = -2*ll + k*log(n),
+       convergence = best$convergence)
+}
+```
+
+
+#### Item (c): Aplicação aos dados {.tabset}
+
+##### Preparação dos dados
+
+```{r dados}
+rfam08   <- read.csv("rfam08.csv")
+risfam08 <- read.csv("risfam08.csv")
+
+rfam08$Y   <- as.numeric(rfam08$Y)
+risfam08$C <- as.numeric(risfam08$C)
+
+names(rfam08)[names(rfam08) == "Y"] <- "Y_fam"
+dfam <- merge(rfam08, risfam08, by = "nquest")
+
+# Remover valores negativos/zero
+dfam2 <- dfam[dfam$C > 0 & dfam$Y > 0, ]
+income      <- dfam2$Y
+consumption <- dfam2$C
+
+cat("Familias (dados limpos):", length(income), "\n")
+cat("Correlacao linear:", round(cor(income, consumption), 4), "\n")
+cat("Prop. income > consumption:", round(sum(income > consumption)/length(income), 4), "\n")
+
+# Escalar por 1000
+inc  <- income / 1000
+cons <- consumption / 1000
+```
+
+
+##### Análise exploratória
+
+```{r eda, fig.height=4, fig.width=14}
+par(mfrow = c(1, 3))
+
+hist(inc, breaks = 50, probability = TRUE,
+     main = "Distribuicao da Renda", xlab = "Income (x1000 EUR)",
+     col = "steelblue", border = "white")
+
+hist(cons, breaks = 50, probability = TRUE,
+     main = "Distribuicao do Consumo", xlab = "Consumption (x1000 EUR)",
+     col = "coral", border = "white")
+
+plot(inc, cons, pch = ".", col = rgb(0, 0, 0.6, 0.2),
+     xlab = "Income (x1000)", ylab = "Consumption (x1000)",
+     main = "Income vs Consumption")
+abline(0, 1, col = "red", lty = 2, lwd = 2)
+legend("topleft", "y = x", lty = 2, col = "red", lwd = 2)
+```
+
+```{r summary-stats}
+library(e1071)
+summary_tbl <- data.frame(
+  Estatistica = c("Min", "Q1", "Mediana", "Media", "Q3", "Max", "DP",
+                  "Assimetria", "Curtose"),
+  Income = round(c(summary(inc), sd(inc), skewness(inc), kurtosis(inc)), 3),
+  Consumption = round(c(summary(cons), sd(cons), skewness(cons), kurtosis(cons)), 3)
+)
+knitr::kable(summary_tbl, caption = "Estatisticas descritivas (x1000 EUR)")
+```
+
+
+##### Ajuste do modelo
+
+```{r ajuste-i}
+# Subamostra para velocidade
+set.seed(42)
+n_sub <- min(2000, length(inc))
+idx <- sample(length(inc), n_sub)
+x_sub <- inc[idx]
+y_sub <- cons[idx]
+
+cat("Ajustando Modelo 1 com", n_sub, "observacoes...\n")
+fit_i <- fit_frechet_biv(x_sub, y_sub)
+
+cat("\n--- Resultados: Modelo 1 ---\n")
+cat("  sigma_1 =", round(fit_i$par[1], 4), "\n")
+cat("  sigma_2 =", round(fit_i$par[2], 4), "\n")
+cat("  alpha   =", round(fit_i$par[3], 4), "\n")
+cat("  rho     =", round(fit_i$par[4], 4), "\n")
+cat("  Log-lik =", round(fit_i$loglik, 2), "\n")
+cat("  AIC     =", round(fit_i$AIC, 2), "\n")
+cat("  BIC     =", round(fit_i$BIC, 2), "\n")
+```
+
+
+##### Qualidade do ajuste
+
+```{r gof-marginais-i, fig.height=5, fig.width=12}
+s1_e <- fit_i$par[1]; s2_e <- fit_i$par[2]
+a_e  <- fit_i$par[3]; rho_e <- fit_i$par[4]
+
+par(mfrow = c(1, 2))
+
+# Marginal X
+x_sort <- sort(x_sub)
+F_emp_x <- (1:length(x_sort)) / length(x_sort)
+F_teo_x <- CDF_marginal(x_sort, s1_e, a_e)
+
+plot(x_sort, F_emp_x, type = "l", lwd = 2,
+     xlab = "Income (x1000)", ylab = "CDF",
+     main = "Marginal X: ECDF vs Frechet ajustada")
+lines(x_sort, F_teo_x, col = "red", lwd = 2, lty = 2)
+legend("bottomright", c("ECDF", "Frechet"), col = c("black", "red"),
+       lty = c(1, 2), lwd = 2)
+
+# Marginal Y
+y_sort <- sort(y_sub)
+F_emp_y <- (1:length(y_sort)) / length(y_sort)
+F_teo_y <- CDF_marginal(y_sort, s2_e, a_e)
+
+plot(y_sort, F_emp_y, type = "l", lwd = 2,
+     xlab = "Consumption (x1000)", ylab = "CDF",
+     main = "Marginal Y: ECDF vs Frechet ajustada")
+lines(y_sort, F_teo_y, col = "blue", lwd = 2, lty = 2)
+legend("bottomright", c("ECDF", "Frechet"), col = c("black", "blue"),
+       lty = c(1, 2), lwd = 2)
+```
+
+
+#### QQ-plot dos resíduos
+
+```{r qqplot-i, fig.height=5, fig.width=12}
+par(mfrow = c(1, 2))
+
+res_x <- F_emp_x - F_teo_x
+qqnorm(res_x, main = "QQ-Plot Residuos Marginal X", pch = 16, cex = 0.5)
+qqline(res_x, col = "red", lwd = 2)
+
+res_y <- F_emp_y - F_teo_y
+qqnorm(res_y, main = "QQ-Plot Residuos Marginal Y", pch = 16, cex = 0.5)
+qqline(res_y, col = "blue", lwd = 2)
+```
+
+
+### Modelo 2: Gumbel Bivariada com $W_i = \exp(X_i)$
+
+#### Definição do modelo
+
+A CDF de $(X_1, X_2)$ e dada por
+$$
+F_{X_1,X_2}(x_1,x_2) = \exp\left\{-e^{-x_1/\sigma} - e^{-x_2/\sigma} + \rho\left[e^{x_1/\sigma}+e^{x_2/\sigma}\right]^{-1}\right\},
+\quad x_1, x_2 \in \mathbb{R},\; \sigma > 0,\; 0 \leq \rho \leq 1.
+$$
+
+Definindo $W_i = \exp(X_i)$, temos $X_i = \ln W_i$ e a CDF de $(W_1, W_2)$ fica:
+$$
+F_{W_1,W_2}(w_1,w_2) = F_{X_1,X_2}(\ln w_1, \ln w_2) = \exp\left\{-w_1^{-1/\sigma} - w_2^{-1/\sigma} + \rho\left[w_1^{1/\sigma}+w_2^{1/\sigma}\right]^{-1}\right\},
+$$
+para $w_1, w_2 > 0$.
+
+**Observacao fundamental:** Este e um **caso particular** do Modelo 1 com $\sigma_1 = \sigma_2 = 1$ e $\alpha = 1/\sigma$. Portanto, o Modelo 2 tem apenas **2 parametros** $(\sigma, \rho)$ contra 4 do Modelo 1.
+
+
+#### Item (a): Densidade e gráficos {.tabset}
+
+##### Derivação
+
+A densidade de $(W_1, W_2)$ segue diretamente da formula do Modelo 1 com a substituicao $\sigma_1 = \sigma_2 = 1$, $\alpha = 1/\sigma$:
+$$
+f_{W_1,W_2}(w_1,w_2) = f_{\text{Frechet}}\!\left(w_1, w_2;\, \sigma_1{=}1,\, \sigma_2{=}1,\, \alpha{=}1/\sigma,\, \rho\right).
+$$
+
+**Alternativa via Jacobiano:** Partindo da densidade conjunta de $(X_1,X_2)$ e usando a transformacao $W_i = e^{X_i}$, o Jacobiano e $|J| = 1/(w_1 w_2)$:
+$$
+f_{W_1,W_2}(w_1,w_2) = f_{X_1,X_2}(\ln w_1, \ln w_2) \cdot \frac{1}{w_1 w_2}.
+$$
+
+```{r densidade-ii}
+density_gumbel_W <- function(w1, w2, sigma, rho) {
+  density_frechet(w1, w2, s1 = 1, s2 = 1, alpha = 1/sigma, rho = rho)
+}
+```
+
+##### Gráficos
+
+```{r plots3d-ii, fig.height=5, fig.width=14}
+w_vals <- seq(0.05, 5, length.out = 80)
+par(mfrow = c(1, 3), mar = c(2, 2, 3, 1))
+
+for (rho_val in c(0, 0.5, 0.9)) {
+  z <- outer(w_vals, w_vals, Vectorize(function(w1, w2)
+    density_gumbel_W(w1, w2, sigma = 0.5, rho = rho_val)))
+  z[z < 0 | is.na(z)] <- 0
+  
+  persp(w_vals, w_vals, z,
+        theta = 30, phi = 25, expand = 0.6,
+        col = "lightyellow", shade = 0.4,
+        xlab = "w1", ylab = "w2", zlab = "f(w1,w2)",
+        main = bquote(sigma == 0.5 ~ "," ~ rho == .(rho_val)),
+        cex.main = 1.2)
+}
+```
+
+```{r contorno-ii, fig.height=5, fig.width=14}
+par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
+for (rho_val in c(0, 0.5, 0.9)) {
+  z <- outer(w_vals, w_vals, Vectorize(function(w1, w2)
+    density_gumbel_W(w1, w2, sigma = 0.5, rho = rho_val)))
+  z[z < 0 | is.na(z)] <- 0
+  
+  image(w_vals, w_vals, z, col = heat.colors(20),
+        xlab = "w1", ylab = "w2",
+        main = bquote(sigma == 0.5 ~ "," ~ rho == .(rho_val)))
+  contour(w_vals, w_vals, z, nlevels = 20, add = TRUE, col = "white")
+}
+```
+
+
+#### Item (b): Estimadores de máxima verossimilhança
+
+Como o modelo e caso particular do (i), reutilizamos a log-verossimilhanca com $\sigma_1=\sigma_2=1$ e $\alpha = 1/\sigma$:
+
+```{r mle-ii}
+loglik_gumbel_W <- function(par, w1_data, w2_data) {
+  sigma <- par[1]; rho <- par[2]
+  if (sigma <= 0 || rho < 0 || rho >= 1) return(-1e15)
+  loglik_frechet(c(1, 1, 1/sigma, rho), w1_data, w2_data)
+}
+
+fit_gumbel_W <- function(w1_data, w2_data) {
+  starts_list <- list(
+    c(0.5, 0.3), c(1.0, 0.5), c(2.0, 0.1),
+    c(0.3, 0.7), c(1.5, 0.4), c(0.1, 0.2),
+    c(3.0, 0.3), c(5.0, 0.5)
+  )
+  
+  best <- list(value = Inf)
+  
+  for (st in starts_list) {
+    res <- tryCatch(
+      optim(st, function(p) -loglik_gumbel_W(p, w1_data, w2_data),
+            method = "L-BFGS-B",
+            lower = c(1e-4, 0), upper = c(50, 0.999),
+            control = list(maxit = 5000)),
+      error = function(e) NULL)
+    if (!is.null(res) && res$value < best$value) best <- res
+    
+    res2 <- tryCatch(
+      optim(st, function(p) -loglik_gumbel_W(p, w1_data, w2_data),
+            method = "Nelder-Mead",
+            control = list(maxit = 10000)),
+      error = function(e) NULL)
+    if (!is.null(res2) && res2$value < best$value &&
+        res2$par[1] > 0 && res2$par[2] >= 0 && res2$par[2] < 1)
+      best <- res2
+  }
+  
+  k <- 2; n <- length(w1_data)
+  ll <- -best$value
+  list(par = best$par,
+       loglik = ll,
+       AIC = -2*ll + 2*k,
+       BIC = -2*ll + k*log(n),
+       convergence = best$convergence)
+}
+```
+
+
+#### Item (c): Ajuste aos dados
+
+```{r ajuste-ii}
+cat("Ajustando Modelo 2 com", n_sub, "observacoes...\n")
+fit_ii <- fit_gumbel_W(x_sub, y_sub)
+
+cat("\n--- Resultados: Modelo 2 ---\n")
+cat("  sigma   =", round(fit_ii$par[1], 4), "\n")
+cat("  rho     =", round(fit_ii$par[2], 4), "\n")
+cat("  (equiv: alpha = 1/sigma =", round(1/fit_ii$par[1], 4), ")\n")
+cat("  Log-lik =", round(fit_ii$loglik, 2), "\n")
+cat("  AIC     =", round(fit_ii$AIC, 2), "\n")
+cat("  BIC     =", round(fit_ii$BIC, 2), "\n")
+```
+
+
+### Cópula via Teorema de Sklar
+
+#### Extração da cópula — Modelo 1
+
+Pelo Teorema de Sklar:
+$$
+F_{X,Y}(x,y) = C\!\left(F_X(x),\, F_Y(y)\right).
+$$
+
+As marginais Frechet satisfazem:
+$$
+u_1 = F_X(x) = e^{-(x/\sigma_1)^{-\alpha}} \;\Longrightarrow\; \left(\frac{x}{\sigma_1}\right)^\alpha = \frac{1}{-\ln u_1}, \quad
+u_2 = F_Y(y) \;\Longrightarrow\; \left(\frac{y}{\sigma_2}\right)^\alpha = \frac{1}{-\ln u_2}.
+$$
+
+Substituindo na CDF conjunta, com $a = 1/(-\ln u_1)$ e $b = 1/(-\ln u_2)$:
+$$
+\boxed{C(u_1, u_2) = u_1\, u_2\, \exp\left\{\frac{\rho\, \ln u_1 \cdot \ln u_2}{\ln u_1 + \ln u_2}\right\}}
+$$
+
+Para $\rho = 0$: $C(u_1,u_2) = u_1 u_2$ (independencia). A medida que $\rho \to 1$, a dependencia cresce.
+
+```{r copula-plots, fig.height=5, fig.width=14}
+copula_frechet <- function(u1, u2, rho) {
+  if (u1 <= 0 || u2 <= 0 || u1 >= 1 || u2 >= 1) return(0)
+  l1 <- log(u1); l2 <- log(u2)
+  u1 * u2 * exp(rho * l1 * l2 / (l1 + l2))
+}
+
+# Densidade da copula (numerica)
+copula_density <- function(u1, u2, rho, h = 1e-5) {
+  (copula_frechet(u1+h, u2+h, rho) - copula_frechet(u1+h, u2, rho) -
+   copula_frechet(u1, u2+h, rho)   + copula_frechet(u1, u2, rho)) / h^2
+}
+
+u_vals <- seq(0.01, 0.99, length.out = 60)
+par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
+
+for (rho_val in c(0, 0.5, 0.9)) {
+  z_cop <- outer(u_vals, u_vals, Vectorize(function(u1, u2)
+    copula_density(u1, u2, rho_val)))
+  z_cop <- pmin(pmax(z_cop, 0), 10)
+  
+  image(u_vals, u_vals, z_cop,
+        col = hcl.colors(20, "YlOrRd", rev = TRUE),
+        xlab = expression(u[1]), ylab = expression(u[2]),
+        main = bquote("Dens. Copula:" ~ rho == .(rho_val)))
+  contour(u_vals, u_vals, z_cop, nlevels = 20, add = TRUE, col = "white")
+}
+```
+
+
+#### Extração da cópula — Modelo 2
+
+O Modelo 2 e caso particular com $\sigma_1 = \sigma_2 = 1$. As marginais sao $F_{W_i}(w) = e^{-w^{-1/\sigma}}$, que e uma Frechet($\sigma_i=1$, $\alpha=1/\sigma$). Logo a copula e exatamente a mesma:
+$$
+C(u_1, u_2) = u_1\, u_2\, \exp\left\{\frac{\rho\, \ln u_1 \cdot \ln u_2}{\ln u_1 + \ln u_2}\right\}.
+$$
+
+A **estrutura de dependencia e a mesma** nos dois modelos --- o que muda sao as marginais.
+
+
+### Distribuição condicional e geração de amostras
+
+#### Distribuição condicional $F_{X|Y}(x|y)$
+
+Para o Modelo 1, a CDF condicional e:
+$$
+F_{X|Y}(x|y) = \frac{\partial F_{X,Y}(x,y)/\partial y}{f_Y(y)}.
+$$
+
+Equivalentemente, via copula:
+$$
+F_{U_1|U_2}(u_1) = \frac{\partial C(u_1, u_2)}{\partial u_2}.
+$$
+
+Para nossa copula:
+$$
+\frac{\partial C}{\partial u_2} = u_1 \exp\!\left\{\frac{\rho\,\ell_1\,\ell_2}{\ell_1+\ell_2}\right\}\left[1 + \frac{\rho\,\ell_1}{\ell_1+\ell_2} - \frac{\rho\,\ell_1\,\ell_2}{(\ell_1+\ell_2)^2}\right],
+$$
+onde $\ell_i = \ln u_i$.
+
+```{r condicional}
+# Derivada parcial dC/du2 (CDF condicional de U1 dado U2)
+cond_CDF_U1_dado_U2 <- function(u1, u2, rho) {
+  if (u1 <= 0 || u2 <= 0 || u1 >= 1 || u2 >= 1) return(0)
+  l1 <- log(u1); l2 <- log(u2)
+  S  <- l1 + l2
+  
+  base <- u1 * exp(rho * l1 * l2 / S)
+  deriv_part <- 1 + rho * l1 / S - rho * l1 * l2 / S^2
+  
+  return(base * deriv_part)
+}
+
+# Verificacao: para rho=0, deve ser u1 (independencia)
+cat("Teste rho=0: F(0.3|0.7) =", cond_CDF_U1_dado_U2(0.3, 0.7, 0),
+    "(esperado: 0.3)\n")
+cat("Teste rho=0: F(0.8|0.2) =", cond_CDF_U1_dado_U2(0.8, 0.2, 0),
+    "(esperado: 0.8)\n")
+```
+
+
+#### Algoritmo de geração de amostras
+
+Seguindo o algoritmo da Aula 3:
+
+1. Simule $U_2 \sim U[0,1]$
+2. Compute $F_{U_1|U_2}(u_1) = \frac{\partial C}{\partial u_2}(u_1, U_2)$
+3. Simule $V \sim U[0,1]$ independente de $U_2$
+4. Obtenha $U_1 = F_{U_1|U_2}^{-1}(V)$ (inversao numerica)
+5. Retorne $(X, Y) = (F_X^{-1}(U_1),\, F_Y^{-1}(U_2))$
+
+```{r geracao-amostras, fig.height=5, fig.width=14}
+# Inversa da marginal Frechet
+qfrechet <- function(u, sigma, alpha) {
+  sigma * (-log(u))^(-1/alpha)
+}
+
+# Geracao de amostra bivariada Frechet
+rgenfrechet <- function(n, s1, s2, alpha, rho) {
+  X <- numeric(n)
+  Y <- numeric(n)
+  
+  for (i in 1:n) {
+    u2 <- runif(1)
+    v  <- runif(1)
+    
+    # Inverter F_{U1|U2}(u1) = v numericamente via uniroot
+    u1 <- tryCatch({
+      uniroot(function(u1) cond_CDF_U1_dado_U2(u1, u2, rho) - v,
+              interval = c(1e-10, 1 - 1e-10),
+              tol = 1e-8)$root
+    }, error = function(e) runif(1))  # fallback
+    
+    X[i] <- qfrechet(u1, s1, alpha)
+    Y[i] <- qfrechet(u2, s2, alpha)
+  }
+  data.frame(X = X, Y = Y)
+}
+
+# Gerar amostras para diferentes valores de rho
+set.seed(123)
+n_sim <- 500
+
+par(mfrow = c(1, 3), mar = c(4, 4, 3, 1))
+for (rho_val in c(0, 0.5, 0.9)) {
+  sim <- rgenfrechet(n_sim, s1 = 1, s2 = 1, alpha = 2, rho = rho_val)
+  
+  plot(sim$X, sim$Y, pch = 16, cex = 0.5,
+       col = rgb(0.2, 0.2, 0.8, 0.5),
+       xlab = "X", ylab = "Y",
+       xlim = c(0, 6), ylim = c(0, 6),
+       main = bquote("Amostra simulada:" ~ rho == .(rho_val)))
+  abline(0, 1, col = "red", lty = 2)
+}
+```
+
+**Interpretacao:** Para $\rho = 0$, os pontos se espalham livremente. Para $\rho = 0.9$, concentram-se fortemente ao longo da diagonal, refletindo alta dependencia positiva.
+
+
+### Comparação final dos modelos
+
+```{r comparacao}
+comp <- data.frame(
+  Criterio = c("Num. parametros", "Log-verossimilhanca", "AIC", "BIC"),
+  Modelo_i  = c(4, round(fit_i$loglik, 2), round(fit_i$AIC, 2), round(fit_i$BIC, 2)),
+  Modelo_ii = c(2, round(fit_ii$loglik, 2), round(fit_ii$AIC, 2), round(fit_ii$BIC, 2))
+)
+knitr::kable(comp, col.names = c("Criterio", "Modelo 1", "Modelo 2"),
+             caption = "Comparacao dos modelos ajustados",
+             align = "lrr")
+```
+
+```{r conclusao-text, results='asis'}
+if (fit_i$AIC < fit_ii$AIC) {
+  cat("**Conclusao:** O Modelo 1 e preferido tanto pelo AIC quanto pelo BIC. ",
+      "Isso ocorre porque as escalas $\\sigma_1$ e $\\sigma_2$ separadas permitem ",
+      "acomodar o fato de que renda e consumo possuem distribuicoes marginais com ",
+      "escalas diferentes. O Modelo 2, ao forcar $\\sigma_1 = \\sigma_2 = 1$, ",
+      "perde flexibilidade nas marginais.\n")
+} else {
+  cat("**Conclusao:** O Modelo 2, mais parcimonioso, e preferido.\n")
+}
+```
+
+
+### Resumo e discussão
+
+#### Principais resultados
+
+1. **Densidade:** Obtida analiticamente para ambos os modelos via $f = F\cdot(g_{xy} + g_x g_y)$, com verificacao numerica por diferencas finitas.
+
+2. **MLE:** Estimadores obtidos numericamente (L-BFGS-B + Nelder-Mead com multiplos pontos iniciais). Nao ha solucao fechada: as equacoes de escore sao nao-lineares.
+
+3. **Copula:** Ambos os modelos compartilham a mesma familia de copulas: $C(u_1,u_2) = u_1 u_2 \exp\{\rho\,\ln u_1 \cdot \ln u_2 / (\ln u_1 + \ln u_2)\}$. A diferenca esta nas marginais.
+
+4. **Geracao de amostras:** Implementada via inversao condicional da copula (algoritmo da Aula 3), usando inversao numerica (`uniroot`).
+
+5. **Dados income-consumption:** O Modelo 1 se ajusta melhor por ter parametros de escala separados para renda ($\sigma_1$) e consumo ($\sigma_2$).
+
+O Modelo 2, ao impor $\sigma_1 = \sigma_2 = 1$, perde flexibilidade nas marginais. Como renda e consumo têm escalas distintas, o Modelo 1 com $\sigma_1 \neq \sigma_2$ captura melhor essa heterogeneidade.
+
+```{r session-info}
+sessionInfo()
+```
 
 
 

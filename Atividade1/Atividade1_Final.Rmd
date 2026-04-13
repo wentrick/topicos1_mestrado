@@ -1,0 +1,1465 @@
+---
+title: "Atividade 1 — Distribuição de Morgenstern Bivariada"
+subtitle: "Distribuições Bivariadas com Marginais Gamma"
+author: "Davi Wentrick"
+date: "`r format(Sys.Date(), '%d de %B de %Y')`"
+output:
+  html_document:
+    theme: flatly
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: false
+    number_sections: false
+    df_print: kable
+    code_folding: show
+---
+
+```{r include=FALSE}
+Sys.setlocale("LC_ALL", "pt_BR.UTF-8")
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center"
+)
+```
+
+
+## Exercício 1
+
+### Item (a): Função de densidade bivariada
+
+A CDF da distribuição de Morgenstern bivariada com marginais Gamma é:
+
+$$
+F_{X,Y}(x,y) = F_X(x)\,F_Y(y)\,\big[1 + \rho\{1 - F_X(x)\}\{1 - F_Y(y)\}\big],
+$$
+
+onde $F_X \sim \text{Gamma}(\alpha,\theta)$, $F_Y \sim \text{Gamma}(\beta,\theta)$ e $-1 \leqslant \rho \leqslant 1$.
+
+Queremos obter a PDF bivariada:
+
+$$
+f_{X,Y}(x,y) = \frac{\partial^2 F_{X,Y}}{\partial x\,\partial y}(x,y).
+$$
+
+Para simplificar, denotamos $u = F_X(x)$ e $v = F_Y(y)$, de modo que:
+
+$$
+F = u\,v\,\big[1 + \rho(1-u)(1-v)\big].
+$$
+
+#### Passo 1: Expansão do produto
+
+Expandindo os parênteses:
+
+$$
+\begin{aligned}
+F &= u\,v\,\big[1 + \rho(1 - u - v + uv)\big] \\
+  &= uv + \rho\,uv\,(1 - u - v + uv) \\
+  &= uv + \rho\big(uv - u^2v - uv^2 + u^2v^2\big).
+\end{aligned}
+$$
+
+#### Passo 2: Primeira derivada $\frac{\partial F}{\partial u}$
+
+Derivando termo a termo em relação a $u$:
+
+$$
+\begin{aligned}
+\frac{\partial F}{\partial u} 
+  &= v + \rho\big(v - 2uv - v^2 + 2uv^2\big) \\
+  &= v + \rho\,v\big(1 - 2u - v + 2uv\big).
+\end{aligned}
+$$
+
+Observe que a expressão entre parênteses se fatoriza:
+
+$$
+1 - 2u - v + 2uv = (1-2u)(1-v),
+$$
+
+Logo:
+
+$$
+\boxed{\frac{\partial F}{\partial u} = v\,\big[1 + \rho(1-2u)(1-v)\big]}.
+$$
+
+#### Passo 3: Derivada cruzada $\frac{\partial^2 F}{\partial u\,\partial v}$
+
+Derivamos o resultado do Passo 2 em relação a $v$. Como temos um produto de $v$ por uma função de $v$, aplicamos a regra do produto:
+
+$$
+\begin{aligned}
+\frac{\partial^2 F}{\partial u\,\partial v} 
+  &= \frac{\partial}{\partial v}\Big\{v\,\big[1 + \rho(1-2u)(1-v)\big]\Big\} \\[6pt]
+  &= 1 \cdot \big[1 + \rho(1-2u)(1-v)\big]
+   \;+\; v \cdot \big[\rho(1-2u)\cdot(-1)\big] \\[6pt]
+  &= 1 + \rho(1-2u)(1-v) - \rho\,v(1-2u).
+\end{aligned}
+$$
+
+Colocando $\rho(1-2u)$ em evidência nos dois últimos termos:
+
+$$
+\begin{aligned}
+\frac{\partial^2 F}{\partial u\,\partial v} 
+  &= 1 + \rho(1-2u)\big[(1-v) - v\big] \\
+  &= 1 + \rho(1-2u)(1 - 2v).
+\end{aligned}
+$$
+
+Portanto:
+
+$$
+\boxed{\frac{\partial^2 F}{\partial u\,\partial v} = 1 + \rho(1-2u)(1-2v)}.
+$$
+
+#### Passo 4: Regra da cadeia (retorno às variáveis $x$ e $y$)
+
+Lembrando que $u = F_X(x)$ e $v = F_Y(y)$, a regra da cadeia nos dá:
+
+$$
+\frac{\partial^2 F}{\partial x\,\partial y} 
+  = \frac{\partial^2 F}{\partial u\,\partial v} \cdot \frac{\partial u}{\partial x} \cdot \frac{\partial v}{\partial y}.
+$$
+
+Como $u = F_X(x)$, temos $\frac{\partial u}{\partial x} = f_X(x)$ (a PDF marginal de $X$). Analogamente, $\frac{\partial v}{\partial y} = f_Y(y)$. Substituindo:
+
+$$
+\boxed{f_{X,Y}(x,y) = f_X(x)\,f_Y(y)\,\big[1 + \rho(1 - 2F_X(x))(1 - 2F_Y(y))\big]},
+$$
+
+onde as densidades marginais Gamma são:
+
+$$
+f_X(x) = \frac{x^{\alpha-1}\,e^{-x/\theta}}{\theta^\alpha\,\Gamma(\alpha)}, \qquad
+f_Y(y) = \frac{y^{\beta-1}\,e^{-y/\theta}}{\theta^\beta\,\Gamma(\beta)}.
+$$
+
+#### Verificação
+
+Tomando $\rho = 0$:
+
+$$
+f_{X,Y}(x,y) = f_X(x)\,f_Y(y)\,\big[1 + 0\big] = f_X(x)\,f_Y(y),
+$$
+
+que é o produto das marginais, confirmando a independência quando $\rho = 0$.
+
+```{r}
+# --- Funções do modelo ---
+
+# CDF bivariada
+cdf_morgenstern <- function(x, y, alpha, beta, theta, rho) {
+  u <- pgamma(x, shape = alpha, rate = 1/theta)
+  v <- pgamma(y, shape = beta, rate = 1/theta)
+  u * v * (1 + rho * (1 - u) * (1 - v))
+}
+
+# PDF bivariada
+pdf_morgenstern <- function(x, y, alpha, beta, theta, rho) {
+  fx <- dgamma(x, shape = alpha, rate = 1/theta)
+  fy <- dgamma(y, shape = beta, rate = 1/theta)
+  Fx <- pgamma(x, shape = alpha, rate = 1/theta)
+  Fy <- pgamma(y, shape = beta, rate = 1/theta)
+  fx * fy * (1 + rho * (1 - 2 * Fx) * (1 - 2 * Fy))
+}
+```
+
+
+```{r fig.width=10, fig.height=10}
+# --- Plots da PDF bivariada ---
+
+# Configuração de grade
+n_grid <- 80
+
+# Parâmetros de exemplo
+params_list <- list(
+  list(alpha = 2, beta = 3, theta = 1, rho = 0.8, title = expression(paste(alpha, "=2, ", beta, "=3, ", theta, "=1, ", rho, "=0.8"))),
+  list(alpha = 2, beta = 3, theta = 1, rho = -0.8, title = expression(paste(alpha, "=2, ", beta, "=3, ", theta, "=1, ", rho, "=-0.8"))),
+  list(alpha = 5, beta = 5, theta = 0.5, rho = 0.5, title = expression(paste(alpha, "=5, ", beta, "=5, ", theta, "=0.5, ", rho, "=0.5"))),
+  list(alpha = 1, beta = 2, theta = 2, rho = 0, title = expression(paste(alpha, "=1, ", beta, "=2, ", theta, "=2, ", rho, "=0 (indep.)")))
+)
+
+# Plot: contornos da PDF bivariada
+par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
+
+for (p in params_list) {
+  xmax <- qgamma(0.995, shape = p$alpha, rate = 1/p$theta)
+  ymax <- qgamma(0.995, shape = p$beta, rate = 1/p$theta)
+  
+  x_seq <- seq(0.01, xmax, length.out = n_grid)
+  y_seq <- seq(0.01, ymax, length.out = n_grid)
+  
+  z_mat <- outer(x_seq, y_seq, function(x, y) {
+    mapply(pdf_morgenstern, x, y,
+           MoreArgs = list(alpha = p$alpha, beta = p$beta,
+                           theta = p$theta, rho = p$rho))
+  })
+  
+  contour(x_seq, y_seq, z_mat, nlevels = 20,
+          xlab = "x", ylab = "y",
+          main = p$title, col = heat.colors(20))
+  title(sub = "Contornos da PDF bivariada", cex.sub = 0.8)
+}
+
+```
+
+
+```{r fig.width=10, fig.height=10}
+# Plot 3D (perspectiva)
+par(mfrow = c(2, 2), mar = c(1, 1, 3, 1))
+
+for (p in params_list) {
+  xmax <- qgamma(0.995, shape = p$alpha, rate = 1/p$theta)
+  ymax <- qgamma(0.995, shape = p$beta, rate = 1/p$theta)
+  
+  x_seq <- seq(0.01, xmax, length.out = n_grid)
+  y_seq <- seq(0.01, ymax, length.out = n_grid)
+  
+  z_mat <- outer(x_seq, y_seq, function(x, y) {
+    mapply(pdf_morgenstern, x, y,
+           MoreArgs = list(alpha = p$alpha, beta = p$beta,
+                           theta = p$theta, rho = p$rho))
+  })
+  
+  persp(x_seq, y_seq, z_mat, theta = 30, phi = 25,
+        xlab = "x", ylab = "y", zlab = "f(x,y)",
+        main = p$title, col = "lightblue", shade = 0.3,
+        ticktype = "detailed", cex.main = 0.9)
+}
+
+
+```
+
+
+### Item (b): Estimadores de máxima verossimilhança
+
+Pela PDF que derivamos no item (a), cada observação contribui com:
+
+$$
+\log f_{X,Y}(x_i, y_i) = \log\Big[f_X(x_i)\,f_Y(y_i)\,\big(1 + \rho\,h_i\big)\Big].
+$$
+
+Usando a propriedade $\log()$:
+
+$$
+\log f_{X,Y}(x_i, y_i) = \underbrace{\log f_X(x_i)}_{\text{parte (A)}} + \underbrace{\log f_Y(y_i)}_{\text{parte (B)}} + \underbrace{\log(1 + \rho\,h_i)}_{\text{parte (C)}},
+$$
+
+onde $h_i = (1 - 2F_X(x_i))(1 - 2F_Y(y_i))$.
+
+Vamos expandir cada parte separadamente.
+
+#### Parte (A) — Expandindo $\log f_X(x_i)$
+
+A densidade da $\text{Gamma}(\alpha, \theta)$ é:
+
+$$
+f_X(x) = \frac{1}{\theta^\alpha\,\Gamma(\alpha)}\,x^{\alpha-1}\,e^{-x/\theta}.
+$$
+
+Aplicando o $\log$:
+
+$$
+\log f_X(x_i) = \log\left(\frac{1}{\theta^\alpha\,\Gamma(\alpha)}\right) + \log\left(x_i^{\alpha-1}\right) + \log\left(e^{-x_i/\theta}\right).
+$$
+
+Simplificando cada termo:
+
+$$
+\begin{aligned}
+\log\left(\frac{1}{\theta^\alpha\,\Gamma(\alpha)}\right) &= -\log(\theta^\alpha) - \log\Gamma(\alpha) = -\alpha\log\theta - \log\Gamma(\alpha), \\[6pt]
+\log\left(x_i^{\alpha-1}\right) &= (\alpha-1)\log x_i, \\[6pt]
+\log\left(e^{-x_i/\theta}\right) &= -\frac{x_i}{\theta}.
+\end{aligned}
+$$
+
+Juntando os três termos:
+
+$$
+\boxed{\log f_X(x_i) = (\alpha-1)\log x_i - \frac{x_i}{\theta} - \alpha\log\theta - \log\Gamma(\alpha)}.
+$$
+
+#### Parte (B) — Expandindo $\log f_Y(y_i)$
+
+O procedimento é idêntico ao da Parte (A), trocando $\alpha \to \beta$ e $x_i \to y_i$. A densidade marginal é:
+
+$$
+f_Y(y) = \frac{1}{\theta^\beta\,\Gamma(\beta)}\,y^{\beta-1}\,e^{-y/\theta},
+$$
+
+e portanto:
+
+$$
+\boxed{\log f_Y(y_i) = (\beta-1)\log y_i - \frac{y_i}{\theta} - \beta\log\theta - \log\Gamma(\beta)}.
+$$
+
+#### Parte (C) — O termo da cópula
+
+Este termo fica como está:
+
+$$
+\log(1 + \rho\,h_i),
+$$
+
+onde $h_i$ depende das CDFs Gamma avaliadas nos dados:
+
+$$
+h_i = \big(1 - 2\,F_X(x_i;\alpha,\theta)\big)\,\big(1 - 2\,F_Y(y_i;\beta,\theta)\big),
+$$
+
+sendo $F_X(x_i;\alpha,\theta) = \frac{1}{\Gamma(\alpha)}\int_0^{x_i/\theta} t^{\alpha-1}e^{-t}\,dt$ a **função Gamma incompleta regularizada** (a CDF da Gamma).
+
+Note que este é o termo que **acopla todos os parâmetros**: $\alpha$, $\beta$, $\theta$ e $\rho$ aparecem juntos dentro de $h_i$.
+
+#### Log-verossimilhança completa
+
+Somando as partes (A), (B) e (C) para todas as $n$ observações:
+
+$$
+\ell(\alpha,\beta,\theta,\rho) = \sum_{i=1}^{n}\bigg[(\alpha-1)\log x_i + (\beta-1)\log y_i - \frac{x_i + y_i}{\theta} - (\alpha+\beta)\log\theta - \log\Gamma(\alpha) - \log\Gamma(\beta) + \log\big(1 + \rho\,h_i\big)\bigg].
+$$
+
+Separando os termos que não dependem de $i$ (constantes ao longo da soma), podemos reescrever como:
+
+$$
+\begin{aligned}
+\ell = \;&(\alpha-1)\underbrace{\sum_{i=1}^n \log x_i}_{:=\, S_x} + (\beta-1)\underbrace{\sum_{i=1}^n \log y_i}_{:=\, S_y} - \frac{1}{\theta}\underbrace{\sum_{i=1}^n (x_i + y_i)}_{=\, n(\bar{x}+\bar{y})} \\[8pt]
+&- n(\alpha+\beta)\log\theta - n\log\Gamma(\alpha) - n\log\Gamma(\beta) + \sum_{i=1}^n \log(1+\rho\,h_i),
+\end{aligned}
+$$
+
+onde definimos as **estatísticas suficientes**:
+
+- $S_x = \sum_{i=1}^n \log x_i$ e $S_y = \sum_{i=1}^n \log y_i$ (somas dos log-dados),
+- $\bar{x}$ e $\bar{y}$ (médias amostrais).
+
+#### Valores iniciais
+
+**Momentos da distribuição Gamma**
+
+Se $X \sim \text{Gamma}(\alpha, \theta)$, os dois primeiros momentos são:
+
+$$
+E[X] = \alpha\,\theta \qquad \text{(média teórica)},
+$$
+
+$$
+\text{Var}(X) = \alpha\,\theta^2 \qquad \text{(variância teórica)}.
+$$
+
+Dos dados, calculamos diretamente:
+
+$$
+\bar{X} = \frac{1}{n}\sum_{i=1}^n x_i \qquad \text{(média amostral)},
+$$
+
+$$
+s_X^2 = \frac{1}{n-1}\sum_{i=1}^n (x_i - \bar{X})^2 \qquad \text{(variância amostral)}.
+$$
+
+**Resolvendo para os parâmetros**
+
+Igualamos momentos teóricos aos amostrais:
+
+$$
+\alpha\,\theta = \bar{X} \qquad \text{(I)},
+$$
+
+$$
+\alpha\,\theta^2 = s_X^2 \qquad \text{(II)}.
+$$
+
+**Passo 1:** Dividimos (II) por (I) para isolar $\theta$:
+
+$$
+\frac{\alpha\,\theta^2}{\alpha\,\theta} = \frac{s_X^2}{\bar{X}} \quad \Longrightarrow \quad \theta = \frac{s_X^2}{\bar{X}}.
+$$
+
+**Passo 2:** Substituímos de volta em (I) para obter $\alpha$:
+
+$$
+\alpha = \frac{\bar{X}}{\theta} = \frac{\bar{X}}{\;s_X^2/\bar{X}\;} = \frac{\bar{X}^2}{s_X^2}.
+$$
+
+**Para a marginal de $Y$**
+
+O mesmo procedimento para $Y \sim \text{Gamma}(\beta, \theta)$:
+
+$$
+\theta = \frac{s_Y^2}{\bar{Y}}, \qquad \beta = \frac{\bar{Y}^2}{s_Y^2}.
+$$
+
+**Para o $\theta$**
+
+No nosso modelo, as duas marginais compartilham o **mesmo** parâmetro de escala $\theta$. Mas pela marginal de $X$ obtemos $\theta = s_X^2/\bar{X}$, e pela marginal de $Y$ obtemos $\theta = s_Y^2/\bar{Y}$. 
+
+Vamos então tomar a **média** dos dois:
+
+$$
+\hat{\theta}_0 = \frac{1}{2}\left(\frac{s_X^2}{\bar{X}} + \frac{s_Y^2}{\bar{Y}}\right).
+$$
+
+E então:
+
+$$
+\hat{\alpha}_0 = \frac{\bar{X}}{\hat{\theta}_0}, \qquad \hat{\beta}_0 = \frac{\bar{Y}}{\hat{\theta}_0}.
+$$
+
+**Parâmetro de dependência $\rho$**
+
+Para $\rho$ vamos usar um valor conservador:
+
+$$
+\hat{\rho}_0 = 0{,}1 \times \text{sign}(r_{XY}),
+$$
+
+onde $r_{XY}$ é a correlação de Pearson amostral. Ou seja, se os dados mostram correlação positiva, começamos com $\rho_0 = +0{,}1$; se negativa, $\rho_0 = -0{,}1$. Um valor pequeno e na direção certa.
+
+
+```{r}
+# Função de log-verossimilhança negativa
+neg_loglik <- function(par, x, y) {
+  alpha <- par[1]
+  beta  <- par[2]
+  theta <- par[3]
+  rho   <- par[4]
+  
+  # Restrições de domínio
+  if (alpha <= 0 || beta <= 0 || theta <= 0 || abs(rho) > 1) return(1e10)
+  
+  fx <- dgamma(x, shape = alpha, rate = 1/theta, log = TRUE)
+  fy <- dgamma(y, shape = beta, rate = 1/theta, log = TRUE)
+  Fx <- pgamma(x, shape = alpha, rate = 1/theta)
+  Fy <- pgamma(y, shape = beta, rate = 1/theta)
+  
+  copula_term <- 1 + rho * (1 - 2 * Fx) * (1 - 2 * Fy)
+  
+  # Verificar se o termo da cópula é positivo (condição de densidade)
+  if (any(copula_term <= 0)) return(1e10)
+  
+  ll <- sum(fx + fy + log(copula_term))
+  return(-ll)
+}
+
+# Reparametrização para otimização irrestrita (método BFGS)
+# alpha = exp(phi1), beta = exp(phi2), theta = exp(phi3), rho = tanh(phi4)
+neg_loglik_repar <- function(phi, x, y) {
+  par <- c(exp(phi[1]), exp(phi[2]), exp(phi[3]), tanh(phi[4]))
+  neg_loglik(par, x, y)
+}
+
+# Função para estimar com múltiplas estratégias
+fit_morgenstern <- function(x, y, verbose = TRUE) {
+  
+  # Valores iniciais baseados nos momentos marginais
+  mean_x <- mean(x); var_x <- var(x)
+  mean_y <- mean(y); var_y <- var(y)
+  
+  theta0 <- (var_x / mean_x + var_y / mean_y) / 2
+  alpha0 <- mean_x / theta0
+  beta0  <- mean_y / theta0
+  rho0   <- 0.1 * sign(cor(x, y))
+  
+  par0 <- c(alpha0, beta0, theta0, rho0)
+  
+  results <- list()
+  
+  # --- Estratégia 1: Nelder-Mead ---
+  t1 <- system.time({
+    fit1 <- tryCatch(
+      optim(par0, neg_loglik, x = x, y = y, method = "Nelder-Mead",
+            control = list(maxit = 10000, reltol = 1e-10)),
+      error = function(e) NULL
+    )
+  })
+  if (!is.null(fit1)) {
+    results[["Nelder-Mead"]] <- list(
+      par = fit1$par, loglik = -fit1$value,
+      convergence = fit1$convergence, time = t1["elapsed"]
+    )
+  }
+  
+  # --- Estratégia 2: L-BFGS-B (com box constraints) ---
+  t2 <- system.time({
+    fit2 <- tryCatch(
+      optim(par0, neg_loglik, x = x, y = y, method = "L-BFGS-B",
+            lower = c(1e-4, 1e-4, 1e-4, -0.999),
+            upper = c(Inf, Inf, Inf, 0.999),
+            control = list(maxit = 10000)),
+      error = function(e) NULL
+    )
+  })
+  if (!is.null(fit2)) {
+    results[["L-BFGS-B"]] <- list(
+      par = fit2$par, loglik = -fit2$value,
+      convergence = fit2$convergence, time = t2["elapsed"]
+    )
+  }
+  
+  # --- Estratégia 3: BFGS com reparametrização ---
+  phi0 <- c(log(alpha0), log(beta0), log(theta0), atanh(max(-0.99, min(0.99, rho0))))
+  
+  t3 <- system.time({
+    fit3 <- tryCatch(
+      optim(phi0, neg_loglik_repar, x = x, y = y, method = "BFGS",
+            control = list(maxit = 10000, reltol = 1e-10)),
+      error = function(e) NULL
+    )
+  })
+  if (!is.null(fit3)) {
+    par3 <- c(exp(fit3$par[1]), exp(fit3$par[2]), exp(fit3$par[3]), tanh(fit3$par[4]))
+    results[["BFGS-repar"]] <- list(
+      par = par3, loglik = -fit3$value,
+      convergence = fit3$convergence, time = t3["elapsed"]
+    )
+  }
+  
+  # Comparação
+  if (verbose) {
+    cat("\n=== Comparação de Estratégias de Otimização ===\n")
+    cat(sprintf("%-15s %-40s %-15s %-10s %-10s\n",
+                "Método", "Parâmetros (alpha, beta, theta, rho)",
+                "log-lik", "Conv.", "Tempo(s)"))
+    cat(paste(rep("-", 90), collapse = ""), "\n")
+    for (name in names(results)) {
+      r <- results[[name]]
+      cat(sprintf("%-15s (%.4f, %.4f, %.4f, %.4f) %15.4f %5d %10.4f\n",
+                  name, r$par[1], r$par[2], r$par[3], r$par[4],
+                  r$loglik, r$convergence, r$time))
+    }
+  }
+  
+  # Retornar o melhor resultado
+  best <- which.max(sapply(results, function(r) r$loglik))
+  return(list(best = results[[best]], all = results, best_method = names(results)[best]))
+}
+```
+
+
+```{r}
+# --- Teste com dados simulados para validar ---
+set.seed(42)
+n_sim <- 500
+alpha_true <- 3; beta_true <- 2; theta_true <- 1; rho_true <- 0.6
+
+# Geração via cópula FGM (algoritmo do slide 13)
+u2_sim <- runif(n_sim)
+v_sim  <- runif(n_sim)
+a_sim  <- rho_true * (1 - 2 * u2_sim)
+# Inversa condicional (slide 16)
+u1_sim <- ((1 + a_sim) - sqrt((1 + a_sim)^2 - 4 * a_sim * v_sim)) / (2 * a_sim)
+# Tratar caso rho = 0 (a = 0)
+u1_sim[a_sim == 0] <- v_sim[a_sim == 0]
+
+x_sim <- qgamma(u1_sim, shape = alpha_true, rate = 1/theta_true)
+y_sim <- qgamma(u2_sim, shape = beta_true, rate = 1/theta_true)
+```
+
+
+```{r echo=FALSE}
+cat("\n--- Validação com dados simulados ---\n")
+cat(sprintf("Parâmetros verdadeiros: alpha=%.1f, beta=%.1f, theta=%.1f, rho=%.1f\n",
+            alpha_true, beta_true, theta_true, rho_true))
+```
+
+
+```{r}
+fit_sim <- fit_morgenstern(x_sim, y_sim)
+```
+
+
+```{r echo=FALSE}
+cat(sprintf("Melhor método: %s\n", fit_sim$best_method))
+```
+
+### Item (c): Aplicação aos dados
+
+```{r}
+# Carregar dados
+rfam  <- read.csv("rfam08.csv")    # Y = renda
+risfam <- read.csv("risfam08.csv") # C = consumo
+
+# Merge pelo identificador da família
+dados <- merge(rfam[, c("nquest", "Y")], risfam[, c("nquest", "C")], by = "nquest")
+colnames(dados) <- c("nquest", "income", "consumption")
+
+# Remover entradas com valores negativos ou nulos
+dados <- dados[dados$income > 0 & dados$consumption > 0, ]
+```
+
+
+```{r echo=FALSE}
+cat(sprintf("Número de famílias após limpeza: %d\n", nrow(dados)))
+```
+
+#### Estatísticas descritivas
+
+```{r echo=FALSE}
+# Estatísticas descritivas
+cat("\n--- Estatísticas descritivas ---\n")
+cat(sprintf("Renda:    min=%.2f, mediana=%.2f, média=%.2f, max=%.2f, sd=%.2f\n",
+            min(dados$income), median(dados$income), mean(dados$income),
+            max(dados$income), sd(dados$income)))
+cat(sprintf("Consumo:  min=%.2f, mediana=%.2f, média=%.2f, max=%.2f, sd=%.2f\n",
+            min(dados$consumption), median(dados$consumption), mean(dados$consumption),
+            max(dados$consumption), sd(dados$consumption)))
+cat(sprintf("Correlação de Pearson: %.4f\n", cor(dados$income, dados$consumption)))
+```
+
+
+```{r}
+# Escalonar os dados para evitar problemas numéricos (dividir por 1000)
+x_data <- dados$consumption / 1000
+y_data <- dados$income / 1000
+```
+
+
+```{r echo=FALSE}
+cat("\nDados escalados (/ 1000):\n")
+cat(sprintf("Consumo/1000: média=%.4f, sd=%.4f\n", mean(x_data), sd(x_data)))
+cat(sprintf("Renda/1000:   média=%.4f, sd=%.4f\n", mean(y_data), sd(y_data)))
+```
+
+#### Ajuste do modelo FGM-Gamma
+
+```{r echo=FALSE}
+# Ajuste do modelo FGM-Gamma
+cat("\n--- Ajustando modelo de Morgenstern bivariado com marginais Gamma ---\n")
+```
+
+
+```{r}
+fit_data <- fit_morgenstern(x_data, y_data)
+
+# Parâmetros estimados
+par_hat <- fit_data$best$par
+alpha_hat <- par_hat[1]
+beta_hat  <- par_hat[2]
+theta_hat <- par_hat[3]
+rho_hat   <- par_hat[4]
+```
+
+
+```{r echo=FALSE}
+cat(sprintf("\nParâmetros estimados (melhor método: %s):\n", fit_data$best_method))
+cat(sprintf("  alpha = %.6f\n", alpha_hat))
+cat(sprintf("  beta  = %.6f\n", beta_hat))
+cat(sprintf("  theta = %.6f\n", theta_hat))
+cat(sprintf("  rho   = %.6f\n", rho_hat))
+cat(sprintf("  log-verossimilhança = %.4f\n", fit_data$best$loglik))
+```
+
+#### Critérios de informação
+
+```{r}
+# --- Critérios de informação ---
+n <- nrow(dados)
+k <- 4  # número de parâmetros
+ll_max <- fit_data$best$loglik
+
+AIC_val <- -2 * ll_max + 2 * k
+BIC_val <- -2 * ll_max + k * log(n)
+```
+
+
+```{r echo=FALSE}
+cat("\n--- Critérios de Informação ---\n")
+cat(sprintf("  AIC = %.4f\n", AIC_val))
+cat(sprintf("  BIC = %.4f\n", BIC_val))
+```
+
+#### Análise da qualidade do ajuste
+
+```{r fig.width=10, fig.height=8}
+# --- Análise da qualidade do ajuste ---
+
+# 1) Verificação das marginais: QQ-plot contra Gamma ajustada
+par(mfrow = c(2, 3))
+
+# QQ-plot marginal X (consumo)
+q_x <- sort(x_data)
+p_x <- (1:n) / (n + 1)
+q_x_theo <- qgamma(p_x, shape = alpha_hat, rate = 1/theta_hat)
+plot(q_x_theo, q_x, pch = ".", col = "blue",
+     xlab = "Quantis teóricos Gamma", ylab = "Quantis amostrais",
+     main = "QQ-plot: Consumo vs Gamma")
+abline(0, 1, col = "red", lwd = 2)
+
+# QQ-plot marginal Y (renda)
+q_y <- sort(y_data)
+q_y_theo <- qgamma(p_x, shape = beta_hat, rate = 1/theta_hat)
+plot(q_y_theo, q_y, pch = ".", col = "blue",
+     xlab = "Quantis teóricos Gamma", ylab = "Quantis amostrais",
+     main = "QQ-plot: Renda vs Gamma")
+abline(0, 1, col = "red", lwd = 2)
+
+# 2) Histograma marginal do consumo com densidade ajustada
+hist(x_data, breaks = 60, prob = TRUE, col = "lightgray",
+     main = "Histograma: Consumo", xlab = "Consumo/1000", xlim = c(0, quantile(x_data, 0.99)))
+curve(dgamma(x, shape = alpha_hat, rate = 1/theta_hat), add = TRUE, col = "red", lwd = 2)
+legend("topright", "Gamma ajustada", col = "red", lwd = 2, cex = 0.8)
+
+# 3) Histograma marginal da renda com densidade ajustada
+hist(y_data, breaks = 60, prob = TRUE, col = "lightgray",
+     main = "Histograma: Renda", xlab = "Renda/1000", xlim = c(0, quantile(y_data, 0.99)))
+curve(dgamma(x, shape = beta_hat, rate = 1/theta_hat), add = TRUE, col = "blue", lwd = 2)
+legend("topright", "Gamma ajustada", col = "blue", lwd = 2, cex = 0.8)
+
+# 4) Scatterplot com contornos do modelo ajustado
+x_range <- seq(0.01, quantile(x_data, 0.98), length.out = 80)
+y_range <- seq(0.01, quantile(y_data, 0.98), length.out = 80)
+
+z_fit <- outer(x_range, y_range, function(x, y) {
+  mapply(pdf_morgenstern, x, y,
+         MoreArgs = list(alpha = alpha_hat, beta = beta_hat,
+                         theta = theta_hat, rho = rho_hat))
+})
+
+plot(x_data, y_data, pch = ".", col = rgb(0, 0, 0, 0.1),
+     xlab = "Consumo/1000", ylab = "Renda/1000",
+     main = "Dados e contornos do modelo ajustado",
+     xlim = range(x_range), ylim = range(y_range))
+contour(x_range, y_range, z_fit, nlevels = 15, add = TRUE, col = "red", lwd = 1.5)
+
+# 5) CDF empírica bivariada vs teórica (avaliada em pontos da grade)
+# Teste de Kolmogorov-Smirnov para cada marginal
+ks_x <- ks.test(x_data, "pgamma", shape = alpha_hat, rate = 1/theta_hat)
+ks_y <- ks.test(y_data, "pgamma", shape = beta_hat, rate = 1/theta_hat)
+
+plot.new()
+plot.window(xlim = c(0, 1), ylim = c(0, 1))
+text(0.5, 0.8, "Testes de Kolmogorov-Smirnov", cex = 1.3, font = 2)
+text(0.5, 0.65, sprintf("Consumo: D=%.4f, p-valor=%.4f", ks_x$statistic, ks_x$p.value), cex = 1.1)
+text(0.5, 0.50, sprintf("Renda:   D=%.4f, p-valor=%.4f", ks_y$statistic, ks_y$p.value), cex = 1.1)
+text(0.5, 0.30, sprintf("rho estimado = %.4f", rho_hat), cex = 1.1)
+
+```
+
+Os QQ-plots de ambas as marginais revelam desvios nas caudas superiores, com os quantis amostrais se afastando da reta de referência para valores elevados. Esse comportamento indica que os dados possuem caudas mais pesadas do que a distribuição Gamma é capaz de acomodar. Os testes de Kolmogorov-Smirnov corroboram essa conclusão: os p-valores obtidos para consumo ($D = 0{,}0896$, $p \approx 0$) e renda ($D = 0{,}0505$, $p \approx 0$) levam à rejeição da hipótese de que as marginais seguem distribuições Gamma, confirmando formalmente a inadequação das marginais.
+
+Além disso, o parâmetro de dependência estimado atingiu a fronteira do espaço paramétrico ($\hat{\rho} = 1{,}0$), evidenciando que a cópula FGM está saturada: mesmo em sua capacidade máxima de modelar dependência, ela é insuficiente frente à dependência observada nos dados. Portanto, o modelo FGM-Gamma é inadequado para os dados de *income-consumption*, tanto na especificação das marginais quanto na estrutura de dependência.
+
+
+## Exercício 2
+
+### Modelo 2: Bivariada com Marginais Fréchet (expoente $-1/2$)
+
+#### Item (a): Função de densidade bivariada
+
+A CDF conjunta é dada por
+$$
+F_{X,Y}(x,y) = \exp\left\{-\left(\frac{x}{\sigma_1}\right)^{-\alpha} - \left(\frac{y}{\sigma_2}\right)^{-\alpha} + \rho\left[\left(\frac{x}{\sigma_1}\right)^{\alpha} + \left(\frac{y}{\sigma_2}\right)^{\alpha}\right]^{-1/2}\right\},
+$$
+onde $x,y \geq 0$, $\sigma_1, \sigma_2 > 0$, $\alpha > 0$ e $0 \leq \rho \leq 1$.
+
+As marginais são Fréchet univariadas (obtidas fazendo $y \to \infty$ ou $x \to \infty$, pois $(a+b)^{-1/2} \to 0$):
+$$
+F_X(x) = \exp\left\{-\left(\frac{x}{\sigma_1}\right)^{-\alpha}\right\}, \qquad
+f_X(x) = \frac{\alpha}{\sigma_1}\left(\frac{x}{\sigma_1}\right)^{-\alpha-1}\exp\left\{-\left(\frac{x}{\sigma_1}\right)^{-\alpha}\right\}.
+$$
+
+Queremos obter $f_{X,Y}(x,y) = \frac{\partial^2 F}{\partial x\,\partial y}$.
+
+Denotamos $a = (x/\sigma_1)^\alpha$, $b = (y/\sigma_2)^\alpha$ e $S = a+b$, de modo que $F = e^g$ com $g = -a^{-1} - b^{-1} + \rho\,S^{-1/2}$.
+
+##### Passo 1: Derivadas de $a$ e $b$
+
+$$
+\frac{\partial a}{\partial x} = \frac{\alpha\, a}{x}, \qquad \frac{\partial b}{\partial y} = \frac{\alpha\, b}{y}.
+$$
+
+##### Passo 2: Derivadas de $g$ em relação a $a$ e $b$
+
+$$
+\frac{\partial g}{\partial a} = \frac{1}{a^2} - \frac{\rho}{2}\,S^{-3/2}, \qquad
+\frac{\partial g}{\partial b} = \frac{1}{b^2} - \frac{\rho}{2}\,S^{-3/2}.
+$$
+
+##### Passo 3: Derivadas parciais $g_x$ e $g_y$
+
+Pela regra da cadeia:
+$$
+\boxed{g_x = \frac{\alpha}{x}\left[\frac{1}{a} - \frac{\rho\, a}{2\,S^{3/2}}\right]}, \qquad
+\boxed{g_y = \frac{\alpha}{y}\left[\frac{1}{b} - \frac{\rho\, b}{2\,S^{3/2}}\right]}.
+$$
+
+##### Passo 4: Derivada cruzada $g_{xy}$
+
+Como $a$ não depende de $y$, derivamos $g_x$ apenas no segundo termo:
+$$
+\frac{\partial}{\partial b}\left[-\frac{\rho\,a}{2}\,S^{-3/2}\right] = \frac{3\rho\,a}{4}\,S^{-5/2}.
+$$
+
+Multiplicando por $\frac{\partial b}{\partial y} = \frac{\alpha b}{y}$:
+$$
+\boxed{g_{xy} = \frac{3\rho\,\alpha^2\,a\,b}{4\,x\,y\,S^{5/2}}}.
+$$
+
+##### Resultado final
+
+Usando $f = e^g \cdot (g_{xy} + g_x \cdot g_y)$:
+$$
+\boxed{f(x,y) = \exp\!\left\{-\frac{1}{a}-\frac{1}{b}+\frac{\rho}{\sqrt{a+b}}\right\} \cdot \left[\frac{3\rho\,\alpha^2\,a\,b}{4\,xy\,(a+b)^{5/2}} + \frac{\alpha^2}{xy}\left(\frac{1}{a}-\frac{\rho\,a}{2(a+b)^{3/2}}\right)\!\left(\frac{1}{b}-\frac{\rho\,b}{2(a+b)^{3/2}}\right)\right]}
+$$
+
+##### Verificação
+
+Tomando $\rho = 0$: $g_{xy} = 0$ e $g_x g_y = \frac{\alpha^2}{xy}\cdot\frac{1}{ab}$, resultando em $f(x,y) = f_X(x)f_Y(y)$ (independência). $\checkmark$
+
+```{r funcoes-modelo2}
+# --- Funções do Modelo 2 (expoente -1/2) ---
+
+# CDF bivariada
+CDF_m2 <- function(x, y, s1, s2, alpha, rho) {
+  a <- (x / s1)^alpha
+  b <- (y / s2)^alpha
+  S <- a + b
+  exp(-1/a - 1/b + rho * S^(-1/2))
+}
+
+# PDF bivariada (analítica)
+pdf_m2 <- function(x, y, s1, s2, alpha, rho) {
+  a <- (x / s1)^alpha
+  b <- (y / s2)^alpha
+  S <- a + b
+  
+  g    <- -1/a - 1/b + rho * S^(-1/2)
+  g_x  <- (alpha / x) * (1/a - rho * a / (2 * S^(3/2)))
+  g_y  <- (alpha / y) * (1/b - rho * b / (2 * S^(3/2)))
+  g_xy <- 3 * rho * alpha^2 * a * b / (4 * x * y * S^(5/2))
+  
+  Fval <- exp(g)
+  fval <- Fval * (g_xy + g_x * g_y)
+  fval <- ifelse(fval < 0 | is.na(fval), 0, fval)
+  return(fval)
+}
+
+# CDF marginal Fréchet
+pfrechet <- function(x, sigma, alpha) {
+  exp(-(x / sigma)^(-alpha))
+}
+
+# PDF marginal Fréchet
+dfrechet <- function(x, sigma, alpha) {
+  (alpha / sigma) * (x / sigma)^(-alpha - 1) * exp(-(x / sigma)^(-alpha))
+}
+
+# Função quantil Fréchet
+qfrechet <- function(p, sigma, alpha) {
+  sigma * (-log(p))^(-1/alpha)
+}
+```
+
+
+```{r verif-modelo2}
+# Verificação: analítica vs numérica
+density_m2_num <- function(x, y, s1, s2, alpha, rho, h = 1e-5) {
+  (CDF_m2(x+h, y+h, s1, s2, alpha, rho) -
+   CDF_m2(x+h, y,   s1, s2, alpha, rho) -
+   CDF_m2(x,   y+h, s1, s2, alpha, rho) +
+   CDF_m2(x,   y,   s1, s2, alpha, rho)) / h^2
+}
+
+cat("Verificação: analítica vs numérica (sigma1=sigma2=1, alpha=2, rho=0.5)\n")
+pts <- data.frame(x = c(1, 2, 0.5), y = c(1, 3, 1.5))
+for (i in 1:nrow(pts)) {
+  fa <- pdf_m2(pts$x[i], pts$y[i], 1, 1, 2, 0.5)
+  fn <- density_m2_num(pts$x[i], pts$y[i], 1, 1, 2, 0.5)
+  cat(sprintf("  (%g,%g): analítica=%.6f, numérica=%.6f, diff=%.2e\n",
+              pts$x[i], pts$y[i], fa, fn, abs(fa - fn)))
+}
+```
+
+
+```{r contorno-modelo2, fig.width=10, fig.height=10}
+n_grid <- 80
+
+params_list_2 <- list(
+  list(s1 = 1, s2 = 1, alpha = 2, rho = 0.8,
+       title = expression(paste(sigma[1], "=1, ", sigma[2], "=1, ", alpha, "=2, ", rho, "=0.8"))),
+  list(s1 = 1, s2 = 1, alpha = 2, rho = 0,
+       title = expression(paste(sigma[1], "=1, ", sigma[2], "=1, ", alpha, "=2, ", rho, "=0 (indep.)"))),
+  list(s1 = 2, s2 = 1, alpha = 2, rho = 0.5,
+       title = expression(paste(sigma[1], "=2, ", sigma[2], "=1, ", alpha, "=2, ", rho, "=0.5"))),
+  list(s1 = 1, s2 = 1, alpha = 1, rho = 0.9,
+       title = expression(paste(sigma[1], "=1, ", sigma[2], "=1, ", alpha, "=1, ", rho, "=0.9")))
+)
+
+par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
+for (p in params_list_2) {
+  xmax <- qfrechet(0.995, p$s1, p$alpha)
+  ymax <- qfrechet(0.995, p$s2, p$alpha)
+  x_seq <- seq(0.01, xmax, length.out = n_grid)
+  y_seq <- seq(0.01, ymax, length.out = n_grid)
+  
+  z_mat <- outer(x_seq, y_seq, function(x, y)
+    mapply(pdf_m2, x, y, MoreArgs = list(s1=p$s1, s2=p$s2, alpha=p$alpha, rho=p$rho)))
+  
+  contour(x_seq, y_seq, z_mat, nlevels = 20,
+          xlab = "x", ylab = "y", main = p$title, col = heat.colors(20))
+  title(sub = "Contornos da PDF bivariada", cex.sub = 0.8)
+}
+```
+
+
+```{r persp-modelo2, fig.width=10, fig.height=10}
+par(mfrow = c(2, 2), mar = c(1, 1, 3, 1))
+for (p in params_list_2) {
+  xmax <- qfrechet(0.995, p$s1, p$alpha)
+  ymax <- qfrechet(0.995, p$s2, p$alpha)
+  x_seq <- seq(0.01, xmax, length.out = n_grid)
+  y_seq <- seq(0.01, ymax, length.out = n_grid)
+  
+  z_mat <- outer(x_seq, y_seq, function(x, y)
+    mapply(pdf_m2, x, y, MoreArgs = list(s1=p$s1, s2=p$s2, alpha=p$alpha, rho=p$rho)))
+  
+  persp(x_seq, y_seq, z_mat, theta = 30, phi = 25,
+        xlab = "x", ylab = "y", zlab = "f(x,y)",
+        main = p$title, col = "lightblue", shade = 0.3,
+        ticktype = "detailed", cex.main = 0.9)
+}
+```
+
+
+#### Item (b): Estimadores de máxima verossimilhança
+
+A log-verossimilhança para a amostra $(x_1,y_1),\ldots,(x_n,y_n)$ é:
+$$
+\ell(\sigma_1, \sigma_2, \alpha, \rho) = \sum_{i=1}^{n}\left[-\frac{1}{a_i} - \frac{1}{b_i} + \frac{\rho}{\sqrt{a_i+b_i}} + \log\!\left(\frac{3\rho\,\alpha^2 a_i b_i}{4\,x_i y_i (a_i+b_i)^{5/2}} + \frac{\alpha^2}{x_i y_i}\left(\frac{1}{a_i}-\frac{\rho\,a_i}{2(a_i+b_i)^{3/2}}\right)\!\left(\frac{1}{b_i}-\frac{\rho\,b_i}{2(a_i+b_i)^{3/2}}\right)\right)\right].
+$$
+
+**Não é possível obter estimadores em forma fechada** — as equações de escore são não-lineares e acopladas.
+
+```{r mle-modelo2}
+neg_loglik_m2 <- function(par, x, y) {
+  s1 <- par[1]; s2 <- par[2]; alpha <- par[3]; rho <- par[4]
+  if (s1 <= 0 || s2 <= 0 || alpha <= 0 || rho < 0 || rho >= 1) return(1e10)
+  
+  a <- (x / s1)^alpha
+  b <- (y / s2)^alpha
+  S <- a + b
+  
+  g    <- -1/a - 1/b + rho * S^(-1/2)
+  g_x  <- (alpha / x) * (1/a - rho * a / (2 * S^(3/2)))
+  g_y  <- (alpha / y) * (1/b - rho * b / (2 * S^(3/2)))
+  g_xy <- 3 * rho * alpha^2 * a * b / (4 * x * y * S^(5/2))
+  
+  kernel <- g_xy + g_x * g_y
+  if (any(kernel <= 0, na.rm = TRUE)) return(1e10)
+  
+  ll <- sum(g + log(kernel))
+  if (is.na(ll) || is.infinite(ll)) return(1e10)
+  return(-ll)
+}
+
+neg_loglik_m2_repar <- function(phi, x, y) {
+  par <- c(exp(phi[1]), exp(phi[2]), exp(phi[3]), plogis(phi[4]))
+  neg_loglik_m2(par, x, y)
+}
+
+fit_model2 <- function(x, y, verbose = TRUE) {
+  s1_0 <- median(x); s2_0 <- median(y); alpha_0 <- 1.0; rho_0 <- 0.3
+  par0 <- c(s1_0, s2_0, alpha_0, rho_0)
+  results <- list()
+  
+  t1 <- system.time({
+    fit1 <- tryCatch(
+      optim(par0, neg_loglik_m2, x = x, y = y, method = "Nelder-Mead",
+            control = list(maxit = 10000, reltol = 1e-10)),
+      error = function(e) NULL)
+  })
+  if (!is.null(fit1) && all(fit1$par[1:3] > 0) && fit1$par[4] >= 0 && fit1$par[4] < 1)
+    results[["Nelder-Mead"]] <- list(par=fit1$par, loglik=-fit1$value, convergence=fit1$convergence, time=t1["elapsed"])
+  
+  t2 <- system.time({
+    fit2 <- tryCatch(
+      optim(par0, neg_loglik_m2, x = x, y = y, method = "L-BFGS-B",
+            lower = c(1e-4,1e-4,1e-4,0), upper = c(Inf,Inf,20,0.999),
+            control = list(maxit = 10000)),
+      error = function(e) NULL)
+  })
+  if (!is.null(fit2))
+    results[["L-BFGS-B"]] <- list(par=fit2$par, loglik=-fit2$value, convergence=fit2$convergence, time=t2["elapsed"])
+  
+  phi0 <- c(log(s1_0), log(s2_0), log(alpha_0), qlogis(max(0.01, min(0.99, rho_0))))
+  t3 <- system.time({
+    fit3 <- tryCatch(
+      optim(phi0, neg_loglik_m2_repar, x = x, y = y, method = "BFGS",
+            control = list(maxit = 10000, reltol = 1e-10)),
+      error = function(e) NULL)
+  })
+  if (!is.null(fit3)) {
+    par3 <- c(exp(fit3$par[1]), exp(fit3$par[2]), exp(fit3$par[3]), plogis(fit3$par[4]))
+    results[["BFGS-repar"]] <- list(par=par3, loglik=-fit3$value, convergence=fit3$convergence, time=t3["elapsed"])
+  }
+  
+  if (verbose && length(results) > 0) {
+    cat("\n=== Comparação de Estratégias de Otimização ===\n")
+    cat(sprintf("%-15s %-48s %-15s %-10s %-10s\n", "Método", "Parâmetros (sigma1, sigma2, alpha, rho)", "log-lik", "Conv.", "Tempo(s)"))
+    cat(paste(rep("-", 98), collapse = ""), "\n")
+    for (name in names(results)) {
+      r <- results[[name]]
+      cat(sprintf("%-15s (%.4f, %.4f, %.4f, %.4f) %15.4f %5d %10.4f\n",
+                  name, r$par[1], r$par[2], r$par[3], r$par[4], r$loglik, r$convergence, r$time))
+    }
+  }
+  best <- which.max(sapply(results, function(r) r$loglik))
+  return(list(best = results[[best]], all = results, best_method = names(results)[best]))
+}
+```
+
+
+```{r sim-modelo2}
+# Validação com dados simulados (via diferenças finitas na cópula condicional)
+set.seed(42)
+n_sim_2 <- 500
+s1_true <- 1; s2_true <- 1; alpha_true_2 <- 2; rho_true_2 <- 0.5
+
+# Cópula condicional numérica: dC/du2 via diferenças finitas na CDF bivariada
+cond_CDF_m2_num <- function(u1, u2, s1, s2, alpha, rho, h = 1e-6) {
+  # F(x,y) = C(F_X(x), F_Y(y)), então dC/du2 = dF/dy / f_Y(y)
+  # Mais simples: usar a CDF diretamente e derivar numericamente em y
+  x <- qfrechet(u1, s1, alpha)
+  y <- qfrechet(u2, s2, alpha)
+  if (y <= h) return(u1)
+  (CDF_m2(x, y + h, s1, s2, alpha, rho) - CDF_m2(x, y, s1, s2, alpha, rho)) / 
+    (pfrechet(y + h, s2, alpha) - pfrechet(y, s2, alpha))
+}
+
+u2_sim <- runif(n_sim_2)
+v_sim  <- runif(n_sim_2)
+u1_sim <- numeric(n_sim_2)
+
+for (i in 1:n_sim_2) {
+  u1_sim[i] <- tryCatch({
+    uniroot(function(u1) cond_CDF_m2_num(u1, u2_sim[i], s1_true, s2_true, alpha_true_2, rho_true_2) - v_sim[i],
+            interval = c(1e-8, 1 - 1e-8), tol = 1e-6)$root
+  }, error = function(e) runif(1))
+}
+
+x_sim_2 <- qfrechet(u1_sim, s1_true, alpha_true_2)
+y_sim_2 <- qfrechet(u2_sim, s2_true, alpha_true_2)
+```
+
+
+```{r echo=FALSE}
+cat("--- Validação com dados simulados ---\n")
+cat(sprintf("Parâmetros verdadeiros: sigma1=%.1f, sigma2=%.1f, alpha=%.1f, rho=%.1f\n",
+            s1_true, s2_true, alpha_true_2, rho_true_2))
+```
+
+```{r}
+fit_sim_2 <- fit_model2(x_sim_2, y_sim_2)
+```
+
+```{r echo=FALSE}
+cat(sprintf("Melhor método: %s\n", fit_sim_2$best_method))
+```
+
+
+#### Item (c): Aplicação aos dados
+
+```{r dados-modelo2}
+rfam_2  <- read.csv("rfam08.csv")
+risfam_2 <- read.csv("risfam08.csv")
+dados_2 <- merge(rfam_2[, c("nquest", "Y")], risfam_2[, c("nquest", "C")], by = "nquest")
+colnames(dados_2) <- c("nquest", "income", "consumption")
+dados_2 <- dados_2[dados_2$income > 0 & dados_2$consumption > 0, ]
+```
+
+```{r echo=FALSE}
+cat(sprintf("Número de famílias após limpeza: %d\n", nrow(dados_2)))
+```
+
+##### Estatísticas descritivas
+
+```{r echo=FALSE}
+cat("\n--- Estatísticas descritivas ---\n")
+cat(sprintf("Renda:    min=%.2f, mediana=%.2f, média=%.2f, max=%.2f, sd=%.2f\n",
+            min(dados_2$income), median(dados_2$income), mean(dados_2$income), max(dados_2$income), sd(dados_2$income)))
+cat(sprintf("Consumo:  min=%.2f, mediana=%.2f, média=%.2f, max=%.2f, sd=%.2f\n",
+            min(dados_2$consumption), median(dados_2$consumption), mean(dados_2$consumption), max(dados_2$consumption), sd(dados_2$consumption)))
+cat(sprintf("Correlação de Pearson: %.4f\n", cor(dados_2$income, dados_2$consumption)))
+```
+
+```{r escala-modelo2}
+x_data_2 <- dados_2$consumption / 1000
+y_data_2 <- dados_2$income / 1000
+```
+
+```{r echo=FALSE}
+cat("\nDados escalados (/ 1000):\n")
+cat(sprintf("Consumo/1000: média=%.4f, sd=%.4f\n", mean(x_data_2), sd(x_data_2)))
+cat(sprintf("Renda/1000:   média=%.4f, sd=%.4f\n", mean(y_data_2), sd(y_data_2)))
+```
+
+##### Ajuste do Modelo 2 (Fréchet, expoente $-1/2$)
+
+```{r echo=FALSE}
+cat("\n--- Ajustando Modelo 2 (Fréchet bivariada, expoente -1/2) ---\n")
+```
+
+```{r ajuste-modelo2}
+set.seed(42)
+n_sub_2 <- min(2000, length(x_data_2))
+idx_2 <- sample(length(x_data_2), n_sub_2)
+x_sub_2 <- x_data_2[idx_2]
+y_sub_2 <- y_data_2[idx_2]
+
+fit_data_2 <- fit_model2(x_sub_2, y_sub_2)
+par_hat_2   <- fit_data_2$best$par
+s1_hat      <- par_hat_2[1]
+s2_hat      <- par_hat_2[2]
+alpha_hat_2 <- par_hat_2[3]
+rho_hat_2   <- par_hat_2[4]
+```
+
+```{r echo=FALSE}
+cat(sprintf("\nParâmetros estimados (melhor método: %s):\n", fit_data_2$best_method))
+cat(sprintf("  sigma1 = %.6f\n  sigma2 = %.6f\n  alpha  = %.6f\n  rho    = %.6f\n", s1_hat, s2_hat, alpha_hat_2, rho_hat_2))
+cat(sprintf("  log-verossimilhança = %.4f\n", fit_data_2$best$loglik))
+```
+
+##### Critérios de informação
+
+```{r crit-modelo2}
+n_2 <- length(x_sub_2); k_2 <- 4; ll_max_2 <- fit_data_2$best$loglik
+AIC_2 <- -2 * ll_max_2 + 2 * k_2
+BIC_2 <- -2 * ll_max_2 + k_2 * log(n_2)
+```
+
+```{r echo=FALSE}
+cat(sprintf("  AIC = %.4f\n  BIC = %.4f\n", AIC_2, BIC_2))
+```
+
+##### Análise da qualidade do ajuste
+
+```{r gof-modelo2, fig.width=10, fig.height=8}
+par(mfrow = c(2, 3))
+
+q_x_2 <- sort(x_sub_2)
+p_x_2 <- (1:n_2) / (n_2 + 1)
+q_x_theo_2 <- qfrechet(p_x_2, s1_hat, alpha_hat_2)
+plot(q_x_theo_2, q_x_2, pch = ".", col = "blue",
+     xlab = "Quantis teóricos Fréchet", ylab = "Quantis amostrais",
+     main = "QQ-plot: Consumo vs Fréchet")
+abline(0, 1, col = "red", lwd = 2)
+
+q_y_2 <- sort(y_sub_2)
+q_y_theo_2 <- qfrechet(p_x_2, s2_hat, alpha_hat_2)
+plot(q_y_theo_2, q_y_2, pch = ".", col = "blue",
+     xlab = "Quantis teóricos Fréchet", ylab = "Quantis amostrais",
+     main = "QQ-plot: Renda vs Fréchet")
+abline(0, 1, col = "red", lwd = 2)
+
+hist(x_sub_2, breaks = 60, prob = TRUE, col = "lightgray",
+     main = "Histograma: Consumo", xlab = "Consumo/1000", xlim = c(0, quantile(x_sub_2, 0.99)))
+curve(dfrechet(x, s1_hat, alpha_hat_2), add = TRUE, col = "red", lwd = 2)
+legend("topright", "Fréchet ajustada", col = "red", lwd = 2, cex = 0.8)
+
+hist(y_sub_2, breaks = 60, prob = TRUE, col = "lightgray",
+     main = "Histograma: Renda", xlab = "Renda/1000", xlim = c(0, quantile(y_sub_2, 0.99)))
+curve(dfrechet(x, s2_hat, alpha_hat_2), add = TRUE, col = "blue", lwd = 2)
+legend("topright", "Fréchet ajustada", col = "blue", lwd = 2, cex = 0.8)
+
+x_range_2 <- seq(0.01, quantile(x_sub_2, 0.98), length.out = 80)
+y_range_2 <- seq(0.01, quantile(y_sub_2, 0.98), length.out = 80)
+z_fit_2 <- outer(x_range_2, y_range_2, function(x, y)
+  mapply(pdf_m2, x, y, MoreArgs = list(s1=s1_hat, s2=s2_hat, alpha=alpha_hat_2, rho=rho_hat_2)))
+plot(x_sub_2, y_sub_2, pch = ".", col = rgb(0,0,0,0.1),
+     xlab = "Consumo/1000", ylab = "Renda/1000", main = "Dados e contornos do modelo ajustado",
+     xlim = range(x_range_2), ylim = range(y_range_2))
+contour(x_range_2, y_range_2, z_fit_2, nlevels = 15, add = TRUE, col = "red", lwd = 1.5)
+
+ks_x_2 <- ks.test(x_sub_2, pfrechet, sigma = s1_hat, alpha = alpha_hat_2)
+ks_y_2 <- ks.test(y_sub_2, pfrechet, sigma = s2_hat, alpha = alpha_hat_2)
+plot.new(); plot.window(xlim = c(0,1), ylim = c(0,1))
+text(0.5, 0.8, "Testes de Kolmogorov-Smirnov", cex = 1.3, font = 2)
+text(0.5, 0.65, sprintf("Consumo: D=%.4f, p-valor=%.4f", ks_x_2$statistic, ks_x_2$p.value), cex = 1.1)
+text(0.5, 0.50, sprintf("Renda:   D=%.4f, p-valor=%.4f", ks_y_2$statistic, ks_y_2$p.value), cex = 1.1)
+text(0.5, 0.30, sprintf("rho estimado = %.4f", rho_hat_2), cex = 1.1)
+```
+
+
+### Modelo 3: Gumbel Bivariada com $W_i = \exp(X_i)$ (expoente $-1$)
+
+#### Item (a): Função de densidade bivariada
+
+A CDF de $(X_1, X_2)$ é dada por
+$$
+F_{X_1,X_2}(x_1,x_2) = \exp\left\{-e^{-x_1/\sigma} - e^{-x_2/\sigma} + \rho\left[e^{x_1/\sigma}+e^{x_2/\sigma}\right]^{-1}\right\}.
+$$
+
+Definindo $W_i = \exp(X_i)$, temos $X_i = \ln W_i$ e a CDF de $(W_1, W_2)$ fica:
+$$
+F_{W_1,W_2}(w_1,w_2) = \exp\left\{-w_1^{-1/\sigma} - w_2^{-1/\sigma} + \rho\left[w_1^{1/\sigma}+w_2^{1/\sigma}\right]^{-1}\right\}.
+$$
+
+**Nota importante:** O expoente aqui é $-1$ (não $-1/2$ como no Modelo 2). Portanto, o Modelo 3 **não é** um caso particular do Modelo 2 — são famílias distintas com estruturas de dependência diferentes.
+
+Denotando $a = w_1^{1/\sigma}$, $b = w_2^{1/\sigma}$, $S = a+b$, temos $g = -1/a - 1/b + \rho/S$, e:
+$$
+g_x = \frac{1}{\sigma w_1}\left[\frac{1}{a} - \frac{\rho\,a}{S^2}\right], \quad
+g_y = \frac{1}{\sigma w_2}\left[\frac{1}{b} - \frac{\rho\,b}{S^2}\right], \quad
+g_{xy} = \frac{2\rho\,a\,b}{\sigma^2\,w_1\,w_2\,S^3}.
+$$
+
+```{r funcoes-modelo3}
+# --- Funções do Modelo 3 (expoente -1) ---
+
+CDF_m3 <- function(w1, w2, sigma, rho) {
+  a <- w1^(1/sigma); b <- w2^(1/sigma); S <- a + b
+  exp(-1/a - 1/b + rho / S)
+}
+
+pdf_m3 <- function(w1, w2, sigma, rho) {
+  alpha <- 1/sigma
+  a <- w1^alpha; b <- w2^alpha; S <- a + b
+  
+  g    <- -1/a - 1/b + rho / S
+  g_x  <- (alpha / w1) * (1/a - rho * a / S^2)
+  g_y  <- (alpha / w2) * (1/b - rho * b / S^2)
+  g_xy <- 2 * rho * alpha^2 * a * b / (w1 * w2 * S^3)
+  
+  Fval <- exp(g)
+  fval <- Fval * (g_xy + g_x * g_y)
+  fval <- ifelse(fval < 0 | is.na(fval), 0, fval)
+  return(fval)
+}
+```
+
+
+```{r contorno-modelo3, fig.width=10, fig.height=10}
+params_list_3 <- list(
+  list(sigma = 0.5, rho = 0.8,
+       title = expression(paste(sigma, "=0.5, ", rho, "=0.8"))),
+  list(sigma = 0.5, rho = 0,
+       title = expression(paste(sigma, "=0.5, ", rho, "=0 (indep.)"))),
+  list(sigma = 1.0, rho = 0.5,
+       title = expression(paste(sigma, "=1.0, ", rho, "=0.5"))),
+  list(sigma = 0.3, rho = 0.9,
+       title = expression(paste(sigma, "=0.3, ", rho, "=0.9")))
+)
+
+par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
+for (p in params_list_3) {
+  alpha_eq <- 1/p$sigma
+  xmax <- qfrechet(0.995, 1, alpha_eq)
+  x_seq <- seq(0.01, xmax, length.out = n_grid)
+  y_seq <- seq(0.01, xmax, length.out = n_grid)
+  z_mat <- outer(x_seq, y_seq, function(w1, w2)
+    mapply(pdf_m3, w1, w2, MoreArgs = list(sigma=p$sigma, rho=p$rho)))
+  contour(x_seq, y_seq, z_mat, nlevels = 20,
+          xlab = expression(w[1]), ylab = expression(w[2]),
+          main = p$title, col = heat.colors(20))
+  title(sub = "Contornos da PDF bivariada", cex.sub = 0.8)
+}
+```
+
+
+```{r persp-modelo3, fig.width=10, fig.height=10}
+par(mfrow = c(2, 2), mar = c(1, 1, 3, 1))
+for (p in params_list_3) {
+  alpha_eq <- 1/p$sigma
+  xmax <- qfrechet(0.995, 1, alpha_eq)
+  x_seq <- seq(0.01, xmax, length.out = n_grid)
+  y_seq <- seq(0.01, xmax, length.out = n_grid)
+  z_mat <- outer(x_seq, y_seq, function(w1, w2)
+    mapply(pdf_m3, w1, w2, MoreArgs = list(sigma=p$sigma, rho=p$rho)))
+  persp(x_seq, y_seq, z_mat, theta = 30, phi = 25,
+        xlab = "w1", ylab = "w2", zlab = "f(w1,w2)",
+        main = p$title, col = "lightblue", shade = 0.3,
+        ticktype = "detailed", cex.main = 0.9)
+}
+```
+
+
+#### Item (b): Estimadores de máxima verossimilhança
+
+O modelo tem apenas 2 parâmetros $(\sigma, \rho)$. A log-verossimilhança usa o mesmo $g_{xy} + g_x g_y$ com expoente $-1$.
+
+```{r mle-modelo3}
+neg_loglik_m3 <- function(par, w1, w2) {
+  sigma <- par[1]; rho <- par[2]
+  if (sigma <= 0 || rho < 0 || rho >= 1) return(1e10)
+  alpha <- 1/sigma
+  a <- w1^alpha; b <- w2^alpha; S <- a + b
+  g    <- -1/a - 1/b + rho / S
+  g_x  <- (alpha / w1) * (1/a - rho * a / S^2)
+  g_y  <- (alpha / w2) * (1/b - rho * b / S^2)
+  g_xy <- 2 * rho * alpha^2 * a * b / (w1 * w2 * S^3)
+  kernel <- g_xy + g_x * g_y
+  if (any(kernel <= 0, na.rm = TRUE)) return(1e10)
+  ll <- sum(g + log(kernel))
+  if (is.na(ll) || is.infinite(ll)) return(1e10)
+  return(-ll)
+}
+
+neg_loglik_m3_repar <- function(phi, w1, w2) {
+  par <- c(exp(phi[1]), plogis(phi[2]))
+  neg_loglik_m3(par, w1, w2)
+}
+
+fit_model3 <- function(w1, w2, verbose = TRUE) {
+  par0 <- c(1.0, 0.3); results <- list()
+  
+  t1 <- system.time({ fit1 <- tryCatch(
+    optim(par0, neg_loglik_m3, w1=w1, w2=w2, method="Nelder-Mead",
+          control=list(maxit=10000, reltol=1e-10)), error=function(e) NULL) })
+  if (!is.null(fit1) && fit1$par[1]>0 && fit1$par[2]>=0 && fit1$par[2]<1)
+    results[["Nelder-Mead"]] <- list(par=fit1$par, loglik=-fit1$value, convergence=fit1$convergence, time=t1["elapsed"])
+  
+  t2 <- system.time({ fit2 <- tryCatch(
+    optim(par0, neg_loglik_m3, w1=w1, w2=w2, method="L-BFGS-B",
+          lower=c(1e-4,0), upper=c(50,0.999), control=list(maxit=10000)), error=function(e) NULL) })
+  if (!is.null(fit2))
+    results[["L-BFGS-B"]] <- list(par=fit2$par, loglik=-fit2$value, convergence=fit2$convergence, time=t2["elapsed"])
+  
+  phi0 <- c(log(1.0), qlogis(0.3))
+  t3 <- system.time({ fit3 <- tryCatch(
+    optim(phi0, neg_loglik_m3_repar, w1=w1, w2=w2, method="BFGS",
+          control=list(maxit=10000, reltol=1e-10)), error=function(e) NULL) })
+  if (!is.null(fit3)) {
+    par3 <- c(exp(fit3$par[1]), plogis(fit3$par[2]))
+    results[["BFGS-repar"]] <- list(par=par3, loglik=-fit3$value, convergence=fit3$convergence, time=t3["elapsed"])
+  }
+  
+  if (verbose && length(results) > 0) {
+    cat("\n=== Comparação de Estratégias de Otimização ===\n")
+    cat(sprintf("%-15s %-30s %-15s %-10s %-10s\n", "Método", "Parâmetros (sigma, rho)", "log-lik", "Conv.", "Tempo(s)"))
+    cat(paste(rep("-", 80), collapse = ""), "\n")
+    for (name in names(results)) {
+      r <- results[[name]]
+      cat(sprintf("%-15s (%.4f, %.4f) %23.4f %5d %10.4f\n", name, r$par[1], r$par[2], r$loglik, r$convergence, r$time))
+    }
+  }
+  best <- which.max(sapply(results, function(r) r$loglik))
+  return(list(best = results[[best]], all = results, best_method = names(results)[best]))
+}
+```
+
+
+##### Ajuste do Modelo 3 (Gumbel transformada, expoente $-1$)
+
+```{r echo=FALSE}
+cat("\n--- Ajustando Modelo 3 (Gumbel transformada, expoente -1) ---\n")
+```
+
+```{r ajuste-modelo3}
+fit_data_3 <- fit_model3(x_sub_2, y_sub_2)
+par_hat_3   <- fit_data_3$best$par
+sigma_hat_3 <- par_hat_3[1]
+rho_hat_3   <- par_hat_3[2]
+```
+
+```{r echo=FALSE}
+cat(sprintf("\nParâmetros estimados (melhor método: %s):\n", fit_data_3$best_method))
+cat(sprintf("  sigma = %.6f\n  rho   = %.6f\n  (equivalente: alpha = 1/sigma = %.6f)\n", sigma_hat_3, rho_hat_3, 1/sigma_hat_3))
+cat(sprintf("  log-verossimilhança = %.4f\n", fit_data_3$best$loglik))
+```
+
+##### Critérios de informação
+
+```{r crit-modelo3}
+k_3 <- 2; ll_max_3 <- fit_data_3$best$loglik
+AIC_3 <- -2 * ll_max_3 + 2 * k_3
+BIC_3 <- -2 * ll_max_3 + k_3 * log(n_2)
+```
+
+```{r echo=FALSE}
+cat(sprintf("  AIC = %.4f\n  BIC = %.4f\n", AIC_3, BIC_3))
+```
+
+##### Análise da qualidade do ajuste
+
+```{r gof-modelo3, fig.width=10, fig.height=8}
+alpha_eq_3 <- 1/sigma_hat_3
+
+par(mfrow = c(2, 3))
+
+q_x_3 <- sort(x_sub_2)
+q_x_theo_3 <- qfrechet(p_x_2, 1, alpha_eq_3)
+plot(q_x_theo_3, q_x_3, pch = ".", col = "blue",
+     xlab = "Quantis teóricos Fréchet(1, 1/sigma)", ylab = "Quantis amostrais",
+     main = "QQ-plot: Consumo vs Fréchet")
+abline(0, 1, col = "red", lwd = 2)
+
+q_y_3 <- sort(y_sub_2)
+q_y_theo_3 <- qfrechet(p_x_2, 1, alpha_eq_3)
+plot(q_y_theo_3, q_y_3, pch = ".", col = "blue",
+     xlab = "Quantis teóricos Fréchet(1, 1/sigma)", ylab = "Quantis amostrais",
+     main = "QQ-plot: Renda vs Fréchet")
+abline(0, 1, col = "red", lwd = 2)
+
+hist(x_sub_2, breaks = 60, prob = TRUE, col = "lightgray",
+     main = "Histograma: Consumo", xlab = "Consumo/1000", xlim = c(0, quantile(x_sub_2, 0.99)))
+curve(dfrechet(x, 1, alpha_eq_3), add = TRUE, col = "red", lwd = 2)
+legend("topright", "Fréchet(1, 1/sigma)", col = "red", lwd = 2, cex = 0.8)
+
+hist(y_sub_2, breaks = 60, prob = TRUE, col = "lightgray",
+     main = "Histograma: Renda", xlab = "Renda/1000", xlim = c(0, quantile(y_sub_2, 0.99)))
+curve(dfrechet(x, 1, alpha_eq_3), add = TRUE, col = "blue", lwd = 2)
+legend("topright", "Fréchet(1, 1/sigma)", col = "blue", lwd = 2, cex = 0.8)
+
+z_fit_3 <- outer(x_range_2, y_range_2, function(w1, w2)
+  mapply(pdf_m3, w1, w2, MoreArgs = list(sigma=sigma_hat_3, rho=rho_hat_3)))
+plot(x_sub_2, y_sub_2, pch = ".", col = rgb(0,0,0,0.1),
+     xlab = "Consumo/1000", ylab = "Renda/1000", main = "Dados e contornos do modelo ajustado",
+     xlim = range(x_range_2), ylim = range(y_range_2))
+contour(x_range_2, y_range_2, z_fit_3, nlevels = 15, add = TRUE, col = "red", lwd = 1.5)
+
+ks_x_3 <- ks.test(x_sub_2, pfrechet, sigma = 1, alpha = alpha_eq_3)
+ks_y_3 <- ks.test(y_sub_2, pfrechet, sigma = 1, alpha = alpha_eq_3)
+plot.new(); plot.window(xlim = c(0,1), ylim = c(0,1))
+text(0.5, 0.8, "Testes de Kolmogorov-Smirnov", cex = 1.3, font = 2)
+text(0.5, 0.65, sprintf("Consumo: D=%.4f, p-valor=%.4f", ks_x_3$statistic, ks_x_3$p.value), cex = 1.1)
+text(0.5, 0.50, sprintf("Renda:   D=%.4f, p-valor=%.4f", ks_y_3$statistic, ks_y_3$p.value), cex = 1.1)
+text(0.5, 0.30, sprintf("sigma = %.4f, rho = %.4f", sigma_hat_3, rho_hat_3), cex = 1.1)
+```
+
+### Comparação final dos modelos
+
+```{r comparacao-ex2}
+comp <- data.frame(
+  Criterio = c("Nº parâmetros", "Expoente", "Log-verossimilhança", "AIC", "BIC"),
+  Modelo_2 = c(4, "-1/2", round(ll_max_2, 2), round(AIC_2, 2), round(BIC_2, 2)),
+  Modelo_3 = c(2, "-1",   round(ll_max_3, 2), round(AIC_3, 2), round(BIC_3, 2))
+)
+knitr::kable(comp, col.names = c("Critério", "Modelo 2 (Fréchet -1/2)", "Modelo 3 (Gumbel -1)"),
+             caption = "Comparação dos modelos ajustados", align = "lrr")
+```
+
+```{r conclusao-ex2, results='asis'}
+if (AIC_2 < AIC_3) {
+  cat("**Conclusão:** O Modelo 2 (expoente $-1/2$) é preferido pelo AIC e BIC. ",
+      "A combinação de escalas separadas ($\\sigma_1 \\neq \\sigma_2$) e o expoente $-1/2$ ",
+      "proporciona maior flexibilidade para capturar a estrutura de dependência dos dados.\n")
+} else {
+  cat("**Conclusão:** O Modelo 3 (expoente $-1$), mais parcimonioso, é preferido.\n")
+}
+```
+
+
+### Resumo e discussão
+
+#### Principais resultados
+
+1. **Modelos distintos:** O Modelo 2 usa expoente $-1/2$ (como no enunciado do exercício, item (i)) e o Modelo 3 usa expoente $-1$ (item (ii)). São famílias **distintas**, não casos particulares um do outro.
+
+2. **Densidade:** Derivada analiticamente para ambos via $f = e^g(g_{xy} + g_x g_y)$, com derivadas diferentes:
+   - Modelo 2: $g_{xy} = \frac{3\rho\alpha^2 ab}{4xy(a+b)^{5/2}}$
+   - Modelo 3: $g_{xy} = \frac{2\rho\alpha^2 ab}{xy(a+b)^{3}}$
+
+3. **Cópulas distintas:** $C_2$ envolve $\sqrt{\ell_1\ell_2/(\ell_1+\ell_2)}$ enquanto $C_3$ envolve $\ell_1\ell_2/(\ell_1+\ell_2)$ (sem raiz).
+
+4. **MLE:** Estimadores obtidos numericamente (3 estratégias). Modelo 2 tem 4 parâmetros ($\sigma_1,\sigma_2,\alpha,\rho$), Modelo 3 tem 2 ($\sigma,\rho$).
+
+5. **Geração de amostras:** Implementada via inversão numérica da CDF condicional da cópula.
+
+```{r session-info-final}
+sessionInfo()
+```
