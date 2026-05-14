@@ -746,7 +746,7 @@ Além disso, o parâmetro de dependência estimado atingiu a fronteira do espaç
 
 ## Exercício 2
 
-### Modelo 2: Bivariada com Marginais Fréchet (expoente $-1/2$)
+### Modelo 2: Bivariada com Marginais Fréchet 
 
 #### Item (a): Função de densidade bivariada
 
@@ -1199,8 +1199,6 @@ $$
 F_{W_1,W_2}(w_1,w_2) = \exp\left\{-w_1^{-1/\sigma} - w_2^{-1/\sigma} + \rho\left[w_1^{1/\sigma}+w_2^{1/\sigma}\right]^{-1}\right\}.
 $$
 
-**Nota importante:** O expoente aqui é $-1$ (não $-1/2$ como no Modelo 2). Portanto, o Modelo 3 **não é** um caso particular do Modelo 2 — são famílias distintas com estruturas de dependência diferentes.
-
 Denotando $a = w_1^{1/\sigma}$, $b = w_2^{1/\sigma}$, $S = a+b$, temos $g = -1/a - 1/b + \rho/S$, e:
 $$
 g_x = \frac{1}{\sigma w_1}\left[\frac{1}{a} - \frac{\rho\,a}{S^2}\right], \quad
@@ -1443,7 +1441,6 @@ if (AIC_2 < AIC_3) {
 }
 ```
 
-
 ### Resumo e discussão
 
 #### Principais resultados
@@ -1456,10 +1453,6 @@ if (AIC_2 < AIC_3) {
 
 3. **Cópulas distintas:** $C_2$ envolve $\sqrt{\ell_1\ell_2/(\ell_1+\ell_2)}$ enquanto $C_3$ envolve $\ell_1\ell_2/(\ell_1+\ell_2)$ (sem raiz).
 
-4. **MLE:** Estimadores obtidos numericamente (3 estratégias). Modelo 2 tem 4 parâmetros ($\sigma_1,\sigma_2,\alpha,\rho$), Modelo 3 tem 2 ($\sigma,\rho$).
 
-5. **Geração de amostras:** Implementada via inversão numérica da CDF condicional da cópula.
 
-```{r session-info-final}
-sessionInfo()
-```
+

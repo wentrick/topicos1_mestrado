@@ -1,0 +1,378 @@
+---
+title: "Exercises — Chapter 4 (4.23–4.41)"
+subtitle: "The Multivariate Normal Distribution"
+author: "Johnson & Wichern — *Applied Multivariate Statistical Analysis*"
+date: ""
+output:
+  html_document:
+    theme: readable
+    toc: true
+    toc_float: true
+    number_sections: false
+    encoding: "UTF-8"
+  pdf_document:
+    latex_engine: pdflatex
+    keep_tex: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+  fig.width  = 10,
+  fig.height = 6,
+  fig.align  = "center",
+  out.width  = "100%",
+  dpi        = 150)
+pacman::p_load(nortest)
+```
+
+---
+
+## Exercise 4.23
+
+Consider the annual rates of return (including dividends) on the Dow-Jones industrial average for the years 1996–2005. These data, multiplied by 100, are
+
+$$-0.6, \quad 3.1, \quad 25.3, \quad -16.8, \quad -7.1, \quad -6.2, \quad 25.2, \quad 22.6, \quad 26.0$$
+
+Use these 10 observations to complete the following.
+
+(a) Construct a $Q$–$Q$ plot. Do the data seem to be normally distributed? Explain.
+
+```{r}
+x <- c(26.0, 22.6, 16.1, 25.2, -6.2, -7.1, -16.8, 25.3, 3.1, -0.6)
+n <- length(x)
+ 
+# (a) Q-Q plot
+x_ord <- sort(x)
+q <- qnorm(((1:n) - 0.5) / n)
+plot(q, x_ord, pch = 19, xlab = "Quantis teoricos", ylab = "Dados ordenados",
+     main = "Q-Q Plot — Exercício 4.23")
+abline(lm(x_ord ~ q), col = "red", lty = 2)
+```
+
+
+(b) Carry out a test of normality based on the correlation coefficient $r_Q$. [See (4-31).] Let the significance level be $\alpha = .10$.
+
+```{r}
+# (b) Teste r_Q com alpha = 0.10
+r_Q <- cor(q, x_ord)
+cat("r_Q =", round(r_Q, 4), "\n")
+cat("r_crit (n=10, α=0.10) = 0.9351\n")
+cat(if (r_Q >= 0.9351) "Não rejeitamos H0: normalidade.\n" else "Rejeitamos H0.\n")
+
+#Usando funcao pronta
+sf.test(x)
+```
+
+
+---
+
+## Exercise 4.24
+
+Exercise 1.4 contains data on three variables for the world's 10 largest companies as of April 2005. For the sales ($x_1$) and profits ($x_2$) data:
+
+(a) Construct $Q$–$Q$ plots. Do these data appear to be normally distributed? Explain.
+
+```{r}
+x1 <- c(108.28, 152.36, 108.91, 63.32, 62.97, 263.99, 265.19, 285.06, 92.01, 172.62)
+x2 <- c(17.05, 16.59, 10.91, 14.14, 11.84, 25.33, 18.54, 15.73, 8.10, 10.91)
+
+par(mfrow = c(1, 2))
+ 
+qqnorm(x1, main = "Q-Q Plot — Sales (x1)", pch = 19, col = "steelblue")
+qqline(x1, col = "red", lwd = 2)
+ 
+qqnorm(x2, main = "Q-Q Plot — Profits (x2)", pch = 19, col = "steelblue")
+qqline(x2, col = "red", lwd = 2)
+```
+
+
+(b) Carry out a test of normality based on the correlation coefficient $r_Q$. [See (4-31).] Set the significance level at $\alpha = .10$. Do the results of these tests corroborate the results in Part a?
+
+```{r}
+sf.test(x1)
+sf.test(x2)
+```
+
+
+---
+
+## Exercise 4.25
+
+Refer to the data for the world's 10 largest companies in Exercise 1.4. Construct a chi-square plot using all three variables. The chi-square quantiles are
+
+$$0.3518, \; 0.7978, \; 1.2125, \; 1.6416, \; 2.1095, \; 2.6430, \; 3.2831, \; 4.1083, \; 5.3170, \; 7.8147$$
+
+```{r}
+X <- matrix(c(
+  108.28, 17.05, 1484.10,
+  152.36, 16.59,  750.33,
+  108.91, 10.91,  801.00,
+   65.45, 14.14, 1110.46,
+   62.97,  9.52, 1031.29,
+  263.99, 25.33,  195.26,
+  265.19, 18.54,  193.83,
+  285.06, 15.73,  191.11,
+   92.01,  8.10, 1175.16,
+  172.62, 10.91,  233.72
+), ncol = 3, byrow = TRUE)
+
+# Distâncias de Mahalanobis
+d2 <- mahalanobis(X, colMeans(X), cov(X))
+ 
+# Quantis qui-quadrado fornecidos (p = 3, n = 10)
+q_chi <- c(0.3518, 0.7978, 1.2125, 1.6416, 2.1095,
+           2.6430, 3.2831, 4.1083, 5.3170, 7.8147)
+ 
+# Chi-square plot
+plot(q_chi, sort(d2),
+     xlab = expression(chi[3]^2 ~ "quantil"),
+     ylab = expression(d[j]^2),
+     main = "Chi-Square Plot",
+     pch = 19)
+abline(0, 1, lty = 2)
+```
+
+
+---
+
+## Exercise 4.26
+
+Exercise 1.2 gives the age $x_1$, measured in years, as well as the selling price $x_2$, measured in thousands of dollars, for $n = 10$ used cars. These data are reproduced as follows:
+
+| $x_1$ | 1 | 2 | 3 | 3 | 4 | 5 | 6 | 8 | 9 | 11 |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| $x_2$ | 18.95 | 19.00 | 17.95 | 15.54 | 14.00 | 12.95 | 8.94 | 7.49 | 6.00 | 3.99 |
+
+(a) Use the results of Exercise 1.2 to calculate the squared statistical distances $(\mathbf{x}_j - \bar{\mathbf{x}})'\mathbf{S}^{-1}(\mathbf{x}_j - \bar{\mathbf{x}})$, $j = 1, 2, \ldots, 10$, where $\mathbf{x}_j' = [x_{j1}, x_{j2}]$.
+
+```{r}
+# Dados
+x1 <- c(1, 2, 3, 3, 4, 5, 6, 8, 9, 11)
+x2 <- c(18.95, 19.00, 17.95, 15.54, 14.00, 12.95, 8.94, 7.49, 6.00, 3.99)
+X <- cbind(x1, x2)
+n <- nrow(X)
+
+# (a) Distâncias de Mahalanobis ao quadrado
+d2 <- mahalanobis(X, colMeans(X), cov(X))
+round(d2, 4)
+```
+
+
+(b) Using the distances in Part a, determine the proportion of the observations falling within the estimated 50% probability contour of a bivariate normal distribution.
+
+```{r}
+# (b) Proporção dentro do contorno de 50%
+# Sob normalidade bivariada, o contorno de 50% corresponde a chi²(2, 0.50)
+corte <- qchisq(0.50, df = 2)
+cat("Proporção dentro do contorno 50%:", mean(d2 <= corte), "\n")
+```
+
+
+(c) Order the distances in Part a and construct a chi-square plot.
+
+```{r}
+# (c) Chi-square plot
+d2_ord <- sort(d2)
+q_teoricos <- qchisq((1:n - 0.5) / n, df = 2)
+plot(q_teoricos, d2_ord,
+     xlab = "Quantis teoricos chi²(2)",
+     ylab = "Distâncias ordenadas",
+     main = "Chi-Square Plot")
+abline(0, 1, lty = 2)
+```
+
+
+(d) Given the results in Parts b and c, are these data approximately bivariate normal? Explain.
+
+```{r}
+# (d) Correlação do Q-Q plot como indicador de normalidade
+cat("Correlação rQ:", cor(q_teoricos, d2_ord), "\n")
+```
+
+
+---
+
+## Exercise 4.27
+
+Consider the radiation data (with door closed) in Example 4.10. Construct a $Q$–$Q$ plot for the natural logarithms of these data. [Note that the natural logarithm transformation corresponds to the value $\lambda = 0$ in (4-34).] Do the natural logarithms appear to be normally distributed? Compare your results with Figure 4.13. Does the choice $\lambda = \tfrac{1}{4}$ or $\lambda = 0$ make much difference in this case?
+
+```{r}
+# Dados de radiação (porta fechada) - Table 4.1, n = 42
+x <- c(0.15, 0.09, 0.18, 0.10, 0.05, 0.12, 0.08, 0.05, 0.08, 0.10,
+       0.07, 0.02, 0.01, 0.10, 0.10, 0.10, 0.02, 0.10, 0.01, 0.40,
+       0.10, 0.05, 0.03, 0.05, 0.15, 0.10, 0.15, 0.09, 0.08, 0.18,
+       0.10, 0.20, 0.11, 0.30, 0.02, 0.20, 0.20, 0.30, 0.30, 0.40,
+       0.30, 0.05)
+
+# Transformações
+ln_x <- log(x)          # λ = 0
+x_14 <- x^(1/4)         # λ = 1/4
+
+# Q-Q plots lado a lado
+par(mfrow = c(1, 2))
+qqnorm(ln_x, main = expression(lambda == 0 ~ "(ln)"))
+qqline(ln_x)
+qqnorm(x_14, main = expression(lambda == 1/4))
+qqline(x_14)
+
+# Testes de normalidade
+shapiro.test(ln_x)
+shapiro.test(x_14)
+```
+
+---
+
+***The following exercises may require a computer.***
+
+---
+
+## Exercise 4.28
+
+Consider the air-pollution data given in Table 1.5. Construct a $Q$–$Q$ plot for the solar radiation measurements and carry out a test for normality based on the correlation coefficient $r_Q$ [see (4-31)]. Let $\alpha = .05$ and use the entry corresponding to $n = 40$ in Table 4.2.
+
+```{r}
+# Dados de radiação solar (x2) da Tabela 1.5
+x2 <- c(98, 107, 103, 88, 91, 90, 84, 72, 82, 64,
+         71, 91, 72, 70, 72, 77, 76, 71, 67, 69,
+         62, 88, 80, 30, 83, 84, 78, 79, 62, 37,
+         71, 52, 48, 75, 35, 85, 86, 86, 79, 79,
+         68, 40)
+ 
+n <- length(x2)
+ 
+# (a) Q-Q plot
+qqnorm(x2, main = "Q-Q Plot - Radiação Solar")
+qqline(x2)
+ 
+# (b) Teste de normalidade via correlação rQ
+x_ord <- sort(x2)
+q_j <- qnorm((1:n - 0.5) / n)
+r_Q <- cor(x_ord, q_j)
+ 
+cat("n =", n, "\n")
+cat("r_Q =", round(r_Q, 4), "\n")
+ 
+# Valor crítico da Tabela 4.2: para n = 40, alpha = 0.05 -> r_Q critico ~ 0.9726
+r_crit <- 0.9726
+cat("Valor crítico (n=40, alpha=0.05) =", r_crit, "\n")
+ 
+if (r_Q < r_crit) {
+  cat("Conclusão: r_Q < r_crit => Rejeita H0. Dados NÃO parecem normais.\n")
+} else {
+  cat("Conclusão: r_Q >= r_crit => Não rejeita H0. Dados parecem normais.\n")
+}
+ 
+```
+
+
+---
+
+## Exercise 4.29
+
+Given the air-pollution data in Table 1.5, examine the pairs $X_5 = \text{NO}_2$ and $X_6 = \text{O}_3$ for bivariate normality.
+
+(a) Calculate statistical distances $(\mathbf{x}_j - \bar{\mathbf{x}})'\mathbf{S}^{-1}(\mathbf{x}_j - \bar{\mathbf{x}})$, $j = 1, 2, \ldots, 42$, where $\mathbf{x}_j' = [x_{j5}, x_{j6}]$.
+
+(b) Determine the proportion of observations $\mathbf{x}_j' = [x_{j5}, x_{j6}]$, $j = 1, 2, \ldots, 42$, falling within the approximate 50% probability contour of a bivariate normal distribution.
+
+(c) Construct a chi-square plot of the ordered distances in Part a.
+
+---
+
+## Exercise 4.30
+
+Consider the used-car data in Exercise 4.26.
+
+(a) Determine the power transformation $\hat{\lambda}_1$ that makes the $x_1$ values approximately normal. Construct a $Q$–$Q$ plot for the transformed data.
+
+(b) Determine the power transformation $\hat{\lambda}_2$ that makes the $x_2$ values approximately normal. Construct a $Q$–$Q$ plot for the transformed data.
+
+(c) Determine the power transformations $\hat{\boldsymbol{\lambda}}' = [\hat{\lambda}_1, \hat{\lambda}_2]$ that make the $\{x_1, x_2\}$ values jointly normal using (4-40). Compare the results with those obtained in Parts a and b.
+
+---
+
+## Exercise 4.31
+
+Examine the marginal normality of the observations on variables $X_1, X_2, \ldots, X_5$ for the multiple-sclerosis data in Table 1.6. Treat the non-multiple-sclerosis and multiple-sclerosis groups separately. Use whatever methodology, including transformations, you feel is appropriate.
+
+---
+
+## Exercise 4.32
+
+Examine the marginal normality of the observations on variables $X_1, X_2, \ldots, X_6$ for the radiotherapy data in Table 1.7. Use whatever methodology, including transformations, you feel is appropriate.
+
+---
+
+## Exercise 4.33
+
+Examine the marginal and bivariate normality of the observations on variables $X_1, X_2, X_3$, and $X_4$ for the data in Table 4.3.
+
+---
+
+## Exercise 4.34
+
+Examine the data on bone mineral content in Table 1.8 for marginal and bivariate normality.
+
+---
+
+## Exercise 4.35
+
+Examine the data on paper-quality measurements in Table 1.2 for marginal and multivariate normality.
+
+---
+
+## Exercise 4.36
+
+Examine the data on women's national track records in Table 1.9 for marginal and multivariate normality.
+
+---
+
+## Exercise 4.37
+
+Refer to Exercise 1.18. Convert the women's track records in Table 1.9 to speeds measured in meters per second. Examine the data on speeds for marginal and multivariate normality.
+
+---
+
+## Exercise 4.38
+
+Examine the data on bulls in Table 1.10 for marginal and multivariate normality. Consider only the variables YrHgt, FtFrBody, PrctFFB, BkFat, SaleHt, and SaleWt.
+
+---
+
+## Exercise 4.39
+
+The data in Table 4.6 (see the psychological profile data: `www.prenhall.com/statistics`) consist of 130 observations generated by scores on a psychological test administered to Peruvian teenagers (ages 15, 16, and 17). For each of these teenagers the gender (male $= 1$, female $= 2$) and socioeconomic status (low $= 1$, medium $= 2$) were also recorded. The scores were accumulated into five subscale scores labeled *independence* (indep), *support* (supp), *benevolence* (benev), *conformity* (conform), and *leadership* (leader).
+
+(a) Examine each of the variables independence, support, benevolence, conformity, and leadership for marginal normality.
+
+(b) Using all five variables, check for multivariate normality.
+
+(c) Refer to part (a). For those variables that are nonnormal, determine the transformation that makes them more nearly normal.
+
+---
+
+## Exercise 4.40
+
+Consider the data on national parks in Exercise 1.27.
+
+(a) Comment on any possible outliers in a scatter plot of the original variables.
+
+(b) Determine the power transformation $\hat{\lambda}_1$ that makes the $x_1$ values approximately normal. Construct a $Q$–$Q$ plot of the transformed observations.
+
+(c) Determine the power transformation $\hat{\lambda}_2$ that makes the $x_2$ values approximately normal. Construct a $Q$–$Q$ plot of the transformed observations.
+
+(d) Determine the power transformation for approximate bivariate normality using (4-40).
+
+---
+
+## Exercise 4.41
+
+Consider the data on snow removal in Exercise 3.20.
+
+(a) Comment on any possible outliers in a scatter plot of the original variables.
+
+(b) Determine the power transformation $\hat{\lambda}_1$ that makes the $x_1$ values approximately normal. Construct a $Q$–$Q$ plot of the transformed observations.
+
+(c) Determine the power transformation $\hat{\lambda}_2$ that makes the $x_2$ values approximately normal. Construct a $Q$–$Q$ plot of the transformed observations.
+
+(d) Determine the power transformation for approximate bivariate normality using (4-40).
