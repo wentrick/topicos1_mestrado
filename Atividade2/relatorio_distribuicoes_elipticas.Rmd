@@ -1,0 +1,326 @@
+---
+title: "Geração e Análise de Distribuições Elípticas"
+author: "Relatório — Aula 8"
+date: "`r format(Sys.Date(), '%d/%m/%Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+    code_folding: show
+    fig_width: 7
+    fig_height: 5
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE,
+                      fig.align = "center")
+set.seed(42)
+```
+
+# 1. Introdução
+
+As **distribuições elípticas** generalizam a distribuição normal multivariada, mantendo a estrutura de simetria em torno de um centro $\mu$ com contornos de nível na forma de elipsoides definidos por uma matriz $\Sigma$.
+A representação estocástica geral é
+
+$$
+\mathbf{X} = \boldsymbol{\mu} + R \cdot A \cdot \mathbf{U},
+$$
+
+onde $\mathbf{U} \sim \text{Uniforme}(\mathcal{S}^{d-1})$ é uniforme na esfera unitária, $A$ é a decomposição de Cholesky de $\Sigma = AA^\top$ e $R \geq 0$ é uma variável radial **independente** de $\mathbf{U}$, cuja distribuição caracteriza cada família.
+
+# 2. Gerador Esférico (base comum)
+
+O código abaixo gera pontos uniformes na esfera $\mathcal{S}^{d-1}$ via rejeição, conforme o rascunho da aula.
+
+```{r}
+rspherical <- function(d, n) {
+  resultado <- matrix(NA, nrow = n, ncol = d)
+  for (i in 1:n) {
+    norma2 <- 2
+    while (norma2 > 1) {
+      u <- runif(d, -1, 1)
+      if (sum(u^2) <= 1) norma2 <- sum(u^2)
+    }
+    resultado[i, ] <- u / sqrt(norma2)
+  }
+  resultado
+}
+```
+
+# 3. Geradores de Distribuições Elípticas
+
+Todos os geradores recebem os parâmetros de localização $\mu$ e escala $\Sigma$, e utilizam a decomposição de Cholesky para transformar amostras esféricas.
+
+## 3.1 Normal Multivariada (Gaussiana)
+
+Para a distribuição $N_d(\mu, \Sigma)$, a variável radial segue $R^2 \sim \chi^2(d)$, ou seja, $R \sim \chi(d)$.
+
+```{r}
+rmnorm <- function(n, mu, Sigma) {
+  d <- length(mu)
+  A <- t(chol(Sigma))          # Cholesky inferior: Sigma = A %*% t(A)
+  U <- rspherical(d, n)        # n pontos na esfera
+  R <- sqrt(rchisq(n, df = d)) # raio ~ chi(d)
+  sweep(R * (U %*% t(A)), 2, mu, "+")
+}
+```
+
+## 3.2 t de Student Multivariada
+
+Para a $t_d(\mu, \Sigma, \nu)$, usamos a representação como mistura de escala da normal: dividimos uma normal por $\sqrt{W/\nu}$, com $W \sim \chi^2(\nu)$. No framework esférico, o raio fica $R_t = R_{\text{normal}} / \sqrt{W/\nu}$.
+
+```{r}
+rmvt <- function(n, mu, Sigma, nu) {
+  d  <- length(mu)
+  A  <- t(chol(Sigma))
+  U  <- rspherical(d, n)
+  Rn <- sqrt(rchisq(n, df = d))   # raio normal
+  W  <- rchisq(n, df = nu)        # variavel auxiliar chi²(nu)
+  R  <- Rn / sqrt(W / nu)         # raio da t
+  sweep(R * (U %*% t(A)), 2, mu, "+")
+}
+```
+
+## 3.3 Distribuição de Laplace Simétrica Multivariada
+
+A Laplace multivariada simétrica é obtida como mistura de escala normal com peso exponencial: $\mathbf{X} = \mu + \sqrt{W} \cdot \mathbf{Z}$, onde $\mathbf{Z} \sim N_d(0, \Sigma)$ e $W \sim \text{Exp}(1)$. Equivalentemente, o raio fica $R_L = \sqrt{W} \cdot R_{\text{normal}}$.
+
+Essa distribuição tem caudas mais pesadas que a normal, mas mais leves que a $t$ com graus de liberdade pequenos.
+
+```{r}
+rmlaplace <- function(n, mu, Sigma) {
+  d  <- length(mu)
+  A  <- t(chol(Sigma))
+  U  <- rspherical(d, n)
+  Rn <- sqrt(rchisq(n, df = d))
+  W  <- rexp(n, rate = 1)
+  R  <- sqrt(W) * Rn
+  sweep(R * (U %*% t(A)), 2, mu, "+")
+}
+```
+
+# 4. Análise Gráfica
+
+## 4.1 Parâmetros comuns
+
+```{r}
+n <- 1000
+
+# --- Dimensão 2 ---
+mu2    <- c(0, 0)
+Sigma2 <- matrix(c(1, 0.6, 0.6, 1), 2, 2)
+
+# --- Dimensão 3 ---
+mu3    <- c(0, 0, 0)
+Sigma3 <- matrix(c(1, 0.5, 0.3,
+                    0.5, 1, 0.4,
+                    0.3, 0.4, 1), 3, 3)
+```
+
+## 4.2 Amostras em $d = 2$
+
+```{r fig.width=10, fig.height=4}
+X_norm2 <- rmnorm(n, mu2, Sigma2)
+X_t2    <- rmvt(n, mu2, Sigma2, nu = 3)
+X_lap2  <- rmlaplace(n, mu2, Sigma2)
+
+par(mfrow = c(1, 3), mar = c(4, 4, 2.5, 1))
+
+plot(X_norm2, pch = 16, cex = 0.4, col = rgb(0.2, 0.4, 0.8, 0.5),
+     xlab = expression(X[1]), ylab = expression(X[2]),
+     main = "Normal", xlim = c(-6, 6), ylim = c(-6, 6))
+
+plot(X_t2, pch = 16, cex = 0.4, col = rgb(0.8, 0.2, 0.2, 0.5),
+     xlab = expression(X[1]), ylab = expression(X[2]),
+     main = expression(paste("t de Student (", nu, " = 3)")),
+     xlim = c(-6, 6), ylim = c(-6, 6))
+
+plot(X_lap2, pch = 16, cex = 0.4, col = rgb(0.2, 0.7, 0.3, 0.5),
+     xlab = expression(X[1]), ylab = expression(X[2]),
+     main = "Laplace", xlim = c(-6, 6), ylim = c(-6, 6))
+```
+
+**Observação:** A $t$ com $\nu = 3$ apresenta pontos muito mais dispersos (caudas pesadas), enquanto a Normal concentra-se mais no centro. A Laplace ocupa uma posição intermediária.
+
+## 4.3 Amostras em $d = 3$
+
+```{r fig.width=10, fig.height=4}
+library(plotly)
+
+X_norm3 <- rmnorm(n, mu3, Sigma3)
+X_t3    <- rmvt(n, mu3, Sigma3, nu = 3)
+X_lap3  <- rmlaplace(n, mu3, Sigma3)
+
+p1 <- plot_ly(x = X_norm3[,1], y = X_norm3[,2], z = X_norm3[,3],
+              type = "scatter3d", mode = "markers",
+              marker = list(size = 2, color = X_norm3[,3],
+                            colorscale = "Blues", opacity = 0.6)) %>%
+  layout(title = "Normal (d=3)",
+         scene = list(xaxis = list(title = "X1"),
+                      yaxis = list(title = "X2"),
+                      zaxis = list(title = "X3")))
+
+p2 <- plot_ly(x = X_t3[,1], y = X_t3[,2], z = X_t3[,3],
+              type = "scatter3d", mode = "markers",
+              marker = list(size = 2, color = X_t3[,3],
+                            colorscale = "Reds", opacity = 0.6)) %>%
+  layout(title = "t de Student (d=3, nu=3)",
+         scene = list(xaxis = list(title = "X1"),
+                      yaxis = list(title = "X2"),
+                      zaxis = list(title = "X3")))
+
+p3 <- plot_ly(x = X_lap3[,1], y = X_lap3[,2], z = X_lap3[,3],
+              type = "scatter3d", mode = "markers",
+              marker = list(size = 2, color = X_lap3[,3],
+                            colorscale = "Greens", opacity = 0.6)) %>%
+  layout(title = "Laplace (d=3)",
+         scene = list(xaxis = list(title = "X1"),
+                      yaxis = list(title = "X2"),
+                      zaxis = list(title = "X3")))
+
+p1
+p2
+p3
+```
+
+# 5. Semelhanças e Diferenças
+
+```{r fig.width=10, fig.height=4}
+# Histograma da norma ||X - mu|| para comparar distribuições radiais
+par(mfrow = c(1, 3))
+
+norms_n <- sqrt(rowSums(X_norm2^2))
+norms_t <- sqrt(rowSums(X_t2^2))
+norms_l <- sqrt(rowSums(X_lap2^2))
+
+lim <- range(c(norms_n, norms_t, norms_l))
+
+hist(norms_n, breaks = 40, col = rgb(0.2, 0.4, 0.8, 0.5), border = "white",
+     main = "Raio — Normal", xlab = "||X||", xlim = c(0, 10), freq = FALSE)
+hist(norms_t, breaks = 40, col = rgb(0.8, 0.2, 0.2, 0.5), border = "white",
+     main = "Raio — t (nu=3)", xlab = "||X||", xlim = c(0, 10), freq = FALSE)
+hist(norms_l, breaks = 40, col = rgb(0.2, 0.7, 0.3, 0.5), border = "white",
+     main = "Raio — Laplace", xlab = "||X||", xlim = c(0, 10), freq = FALSE)
+```
+
+**Semelhanças entre os modelos:**
+
+- Todas possuem contornos de nível elípticos definidos por $\Sigma$;
+- Compartilham o mesmo gerador esférico para a direção $\mathbf{U}$;
+- A estrutura de correlação é preservada — a forma da "nuvem" é a mesma.
+
+**Diferenças:**
+
+| Propriedade            | Normal                  | t de Student ($\nu=3$)      | Laplace                     |
+|:-----------------------|:------------------------|:----------------------------|:----------------------------|
+| Caudas                 | Leves (sub-gaussiana)   | Muito pesadas               | Moderadamente pesadas       |
+| Curtose marginal       | 3                       | $3(\nu-2)/(\nu-4)$ (>3)    | 6                           |
+| Momentos finitos       | Todos existem           | Apenas para $k < \nu$       | Todos existem               |
+| Raio $R$               | $\chi(d)$               | Cauda tipo Pareto           | Cauda tipo raiz exponencial |
+| Aplicação típica       | Referência clássica     | Dados financeiros, robustez | Sinais esparsos             |
+
+# 6. Estimação de Parâmetros
+
+## 6.1 Metodologia
+
+Para cada família, geramos $M = 200$ trajetórias simuladas de tamanho $n = 500$ e estimamos $\mu$ e $\Sigma$ via máxima verossimilhança (MLE). Para a normal e a Laplace, os estimadores coincidem com a média e a covariância amostral (possivelmente com correção). Para a $t$, usamos a média e a covariância amostral como aproximação (o MLE exato é iterativo).
+
+```{r}
+M    <- 200    # número de réplicas
+n_sim <- 500   # tamanho de cada amostra
+mu0  <- c(0, 0)
+Sig0 <- matrix(c(1, 0.6, 0.6, 1), 2, 2)
+nu0  <- 5
+
+est_mu_norm  <- matrix(NA, M, 2)
+est_mu_t     <- matrix(NA, M, 2)
+est_mu_lap   <- matrix(NA, M, 2)
+
+est_sig11_norm <- est_sig11_t <- est_sig11_lap <- numeric(M)
+est_sig12_norm <- est_sig12_t <- est_sig12_lap <- numeric(M)
+
+for (m in 1:M) {
+  # Normal
+  X <- rmnorm(n_sim, mu0, Sig0)
+  est_mu_norm[m, ] <- colMeans(X)
+  S <- cov(X)
+  est_sig11_norm[m] <- S[1,1]
+  est_sig12_norm[m] <- S[1,2]
+
+  # t de Student
+  X <- rmvt(n_sim, mu0, Sig0, nu = nu0)
+  est_mu_t[m, ] <- colMeans(X)
+  S <- cov(X) * (nu0 - 2) / nu0   # correção: Var(t) = nu/(nu-2) * Sigma
+  est_sig11_t[m] <- S[1,1]
+  est_sig12_t[m] <- S[1,2]
+
+  # Laplace
+  X <- rmlaplace(n_sim, mu0, Sig0)
+  est_mu_lap[m, ] <- colMeans(X)
+  S <- cov(X) / 2   # correção: Var(Laplace) = 2*Sigma
+  est_sig11_lap[m] <- S[1,1]
+  est_sig12_lap[m] <- S[1,2]
+}
+```
+
+## 6.2 Resultados: estimação de $\mu_1$
+
+```{r fig.width=9, fig.height=4}
+par(mfrow = c(1, 3))
+
+hist(est_mu_norm[,1], breaks = 25, col = rgb(0.2,0.4,0.8,0.5), border = "white",
+     main = "Normal", xlab = expression(hat(mu)[1]), freq = FALSE, xlim = c(-0.3, 0.3))
+abline(v = 0, col = "red", lwd = 2)
+
+hist(est_mu_t[,1], breaks = 25, col = rgb(0.8,0.2,0.2,0.5), border = "white",
+     main = expression(paste("t (", nu, "=5)")), xlab = expression(hat(mu)[1]),
+     freq = FALSE, xlim = c(-0.3, 0.3))
+abline(v = 0, col = "red", lwd = 2)
+
+hist(est_mu_lap[,1], breaks = 25, col = rgb(0.2,0.7,0.3,0.5), border = "white",
+     main = "Laplace", xlab = expression(hat(mu)[1]), freq = FALSE, xlim = c(-0.3, 0.3))
+abline(v = 0, col = "red", lwd = 2)
+```
+
+## 6.3 Resultados: estimação de $\Sigma_{11}$ e $\Sigma_{12}$
+
+```{r fig.width=9, fig.height=4}
+par(mfrow = c(1, 3))
+
+boxplot(data.frame(Normal = est_sig11_norm, t = est_sig11_t, Laplace = est_sig11_lap),
+        col = c(rgb(0.2,0.4,0.8,0.5), rgb(0.8,0.2,0.2,0.5), rgb(0.2,0.7,0.3,0.5)),
+        main = expression(paste("Estimação de ", Sigma[11], " (verdadeiro = 1)")),
+        ylab = expression(hat(Sigma)[11]))
+abline(h = 1, col = "red", lwd = 2, lty = 2)
+
+boxplot(data.frame(Normal = est_sig12_norm, t = est_sig12_t, Laplace = est_sig12_lap),
+        col = c(rgb(0.2,0.4,0.8,0.5), rgb(0.8,0.2,0.2,0.5), rgb(0.2,0.7,0.3,0.5)),
+        main = expression(paste("Estimação de ", Sigma[12], " (verdadeiro = 0.6)")),
+        ylab = expression(hat(Sigma)[12]))
+abline(h = 0.6, col = "red", lwd = 2, lty = 2)
+```
+
+## 6.4 Tabela resumo
+
+```{r}
+resumo <- data.frame(
+  Modelo   = c("Normal", "t (nu=5)", "Laplace"),
+  `Viés mu1`     = round(c(mean(est_mu_norm[,1]), mean(est_mu_t[,1]),
+                            mean(est_mu_lap[,1])), 4),
+  `DP mu1`       = round(c(sd(est_mu_norm[,1]), sd(est_mu_t[,1]),
+                            sd(est_mu_lap[,1])), 4),
+  `Média Sig11`  = round(c(mean(est_sig11_norm), mean(est_sig11_t),
+                            mean(est_sig11_lap)), 4),
+  `Média Sig12`  = round(c(mean(est_sig12_norm), mean(est_sig12_t),
+                            mean(est_sig12_lap)), 4),
+  check.names = FALSE
+)
+knitr::kable(resumo, caption = "Resumo da estimação via simulação (M = 200, n = 500)")
+```
+
+**Conclusões da estimação:**
+
+- A estimação de $\mu$ é não-viesada para os três modelos, mas a variância do estimador é maior na $t$ (caudas pesadas aumentam a incerteza).
+- A estimação de $\Sigma$ requer a correção pelo fator de escala adequado a cada família. Sem correção, a covariância amostral superestima $\Sigma$ na $t$ por um fator de $\nu / (\nu - 2)$ e na Laplace por um fator 2.
+- A Normal provê estimativas mais eficientes (menor variância), seguida pela Laplace e, por último, pela $t$.
