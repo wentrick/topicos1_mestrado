@@ -16,6 +16,11 @@ output:
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE,
                       fig.align = "center")
 set.seed(42)
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(plotly)
 ```
 
 # 1. Introdução
@@ -68,7 +73,7 @@ rmnorm <- function(n, mu, Sigma) {
 
 ## 3.2 t de Student Multivariada
 
-Para a $t_d(\mu, \Sigma, \nu)$, usamos a representação como mistura de escala da normal: dividimos uma normal por $\sqrt{W/\nu}$, com $W \sim \chi^2(\nu)$. No framework esférico, o raio fica $R_t = R_{\text{normal}} / \sqrt{W/\nu}$.
+Para a $t_d(\mu, \Sigma, \nu)$, usamos a representação como mistura de escala da normal: dividimos uma normal por $\sqrt{W/\nu}$, com $W \sim \chi^2(\nu)$. No contexto esférico, o raio fica $R_t = R_{\text{normal}} / \sqrt{W/\nu}$.
 
 ```{r}
 rmvt <- function(n, mu, Sigma, nu) {
@@ -102,7 +107,7 @@ rmlaplace <- function(n, mu, Sigma) {
 
 # 4. Análise Gráfica
 
-## 4.1 Parâmetros comuns
+## 4.1 Parâmetros comuns e geração das amostras
 
 ```{r}
 n <- 1000
@@ -116,42 +121,48 @@ mu3    <- c(0, 0, 0)
 Sigma3 <- matrix(c(1, 0.5, 0.3,
                     0.5, 1, 0.4,
                     0.3, 0.4, 1), 3, 3)
-```
 
-## 4.2 Amostras em $d = 2$
-
-```{r fig.width=10, fig.height=4}
+# Gerar amostras d=2
 X_norm2 <- rmnorm(n, mu2, Sigma2)
 X_t2    <- rmvt(n, mu2, Sigma2, nu = 3)
 X_lap2  <- rmlaplace(n, mu2, Sigma2)
 
-par(mfrow = c(1, 3), mar = c(4, 4, 2.5, 1))
+# Gerar amostras d=3
+X_norm3 <- rmnorm(n, mu3, Sigma3)
+X_t3    <- rmvt(n, mu3, Sigma3, nu = 3)
+X_lap3  <- rmlaplace(n, mu3, Sigma3)
+```
 
-plot(X_norm2, pch = 16, cex = 0.4, col = rgb(0.2, 0.4, 0.8, 0.5),
-     xlab = expression(X[1]), ylab = expression(X[2]),
-     main = "Normal", xlim = c(-6, 6), ylim = c(-6, 6))
+## 4.2 Amostras em $d = 2$
 
-plot(X_t2, pch = 16, cex = 0.4, col = rgb(0.8, 0.2, 0.2, 0.5),
-     xlab = expression(X[1]), ylab = expression(X[2]),
-     main = expression(paste("t de Student (", nu, " = 3)")),
-     xlim = c(-6, 6), ylim = c(-6, 6))
+Organizamos todas as amostras num único data frame para facilitar a visualização gráfica.
 
-plot(X_lap2, pch = 16, cex = 0.4, col = rgb(0.2, 0.7, 0.3, 0.5),
-     xlab = expression(X[1]), ylab = expression(X[2]),
-     main = "Laplace", xlim = c(-6, 6), ylim = c(-6, 6))
+```{r fig.width=10, fig.height=4, echo=FALSE}
+df_2d <- bind_rows(
+  tibble(X1 = X_norm2[,1], X2 = X_norm2[,2], Modelo = "Normal"),
+  tibble(X1 = X_t2[,1],    X2 = X_t2[,2],    Modelo = "t de Student (ν = 3)"),
+  tibble(X1 = X_lap2[,1],  X2 = X_lap2[,2],  Modelo = "Laplace")
+) %>%
+  mutate(Modelo = factor(Modelo, levels = c("Normal", "t de Student (ν = 3)", "Laplace")))
+
+ggplot(df_2d, aes(x = X1, y = X2)) +
+  geom_point(aes(color = Modelo), alpha = 0.4, size = 0.8) +
+  facet_wrap(~ Modelo) +
+  coord_fixed(xlim = c(-6, 6), ylim = c(-6, 6)) +
+  scale_color_manual(values = c("Normal" = "#3366CC",
+                                "t de Student (ν = 3)" = "#CC3333",
+                                "Laplace" = "#33AA55")) +
+  labs(x = expression(X[1]), y = expression(X[2])) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        strip.text = element_text(size = 12, face = "bold"))
 ```
 
 **Observação:** A $t$ com $\nu = 3$ apresenta pontos muito mais dispersos (caudas pesadas), enquanto a Normal concentra-se mais no centro. A Laplace ocupa uma posição intermediária.
 
 ## 4.3 Amostras em $d = 3$
 
-```{r fig.width=10, fig.height=4}
-library(plotly)
-
-X_norm3 <- rmnorm(n, mu3, Sigma3)
-X_t3    <- rmvt(n, mu3, Sigma3, nu = 3)
-X_lap3  <- rmlaplace(n, mu3, Sigma3)
-
+```{r fig.width=10, fig.height=4, echo=FALSE}
 p1 <- plot_ly(x = X_norm3[,1], y = X_norm3[,2], z = X_norm3[,3],
               type = "scatter3d", mode = "markers",
               marker = list(size = 2, color = X_norm3[,3],
@@ -186,23 +197,51 @@ p3
 
 # 5. Semelhanças e Diferenças
 
-```{r fig.width=10, fig.height=4}
-# Histograma da norma ||X - mu|| para comparar distribuições radiais
-par(mfrow = c(1, 3))
+## 5.1 Distribuição radial
 
-norms_n <- sqrt(rowSums(X_norm2^2))
-norms_t <- sqrt(rowSums(X_t2^2))
-norms_l <- sqrt(rowSums(X_lap2^2))
+Comparacao da distribuição do raio $\|X - \mu\|$ para cada família.
 
-lim <- range(c(norms_n, norms_t, norms_l))
+```{r fig.width=10, fig.height=4, echo=FALSE}
+df_raio <- bind_rows(
+  tibble(raio = sqrt(rowSums(X_norm2^2)), Modelo = "Normal"),
+  tibble(raio = sqrt(rowSums(X_t2^2)),    Modelo = "t de Student (ν = 3)"),
+  tibble(raio = sqrt(rowSums(X_lap2^2)),  Modelo = "Laplace")
+) %>%
+  mutate(Modelo = factor(Modelo, levels = c("Normal", "t de Student (ν = 3)", "Laplace")))
 
-hist(norms_n, breaks = 40, col = rgb(0.2, 0.4, 0.8, 0.5), border = "white",
-     main = "Raio — Normal", xlab = "||X||", xlim = c(0, 10), freq = FALSE)
-hist(norms_t, breaks = 40, col = rgb(0.8, 0.2, 0.2, 0.5), border = "white",
-     main = "Raio — t (nu=3)", xlab = "||X||", xlim = c(0, 10), freq = FALSE)
-hist(norms_l, breaks = 40, col = rgb(0.2, 0.7, 0.3, 0.5), border = "white",
-     main = "Raio — Laplace", xlab = "||X||", xlim = c(0, 10), freq = FALSE)
+ggplot(df_raio, aes(x = raio, fill = Modelo)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 40,
+                 color = "white", alpha = 0.7) +
+  facet_wrap(~ Modelo) +
+  coord_cartesian(xlim = c(0, 10)) +
+  scale_fill_manual(values = c("Normal" = "#3366CC",
+                               "t de Student (ν = 3)" = "#CC3333",
+                               "Laplace" = "#33AA55")) +
+  labs(x = "||X||", y = "Densidade") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        strip.text = element_text(size = 11, face = "bold"))
 ```
+
+## 5.2 Comparação sobrepostas das densidades radiais
+
+```{r fig.width=7, fig.height=4, echo=FALSE}
+ggplot(df_raio, aes(x = raio, color = Modelo, fill = Modelo)) +
+  geom_density(alpha = 0.2, linewidth = 0.8) +
+  coord_cartesian(xlim = c(0, 8)) +
+  scale_color_manual(values = c("Normal" = "#3366CC",
+                                "t de Student (ν = 3)" = "#CC3333",
+                                "Laplace" = "#33AA55")) +
+  scale_fill_manual(values = c("Normal" = "#3366CC",
+                               "t de Student (ν = 3)" = "#CC3333",
+                               "Laplace" = "#33AA55")) +
+  labs(x = "||X||", y = "Densidade",
+       title = "Comparação das distribuições radiais") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+## 5.3 Resumo comparativo
 
 **Semelhanças entre os modelos:**
 
@@ -215,10 +254,10 @@ hist(norms_l, breaks = 40, col = rgb(0.2, 0.7, 0.3, 0.5), border = "white",
 | Propriedade            | Normal                  | t de Student ($\nu=3$)      | Laplace                     |
 |:-----------------------|:------------------------|:----------------------------|:----------------------------|
 | Caudas                 | Leves (sub-gaussiana)   | Muito pesadas               | Moderadamente pesadas       |
-| Curtose marginal       | 3                       | $3(\nu-2)/(\nu-4)$ (>3)    | 6                           |
+| Curtose marginal       | 3                       | $3(\nu-2)/(\nu-4)$ (>3)     | 6                           |
 | Momentos finitos       | Todos existem           | Apenas para $k < \nu$       | Todos existem               |
-| Raio $R$               | $\chi(d)$               | Cauda tipo Pareto           | Cauda tipo raiz exponencial |
-| Aplicação típica       | Referência clássica     | Dados financeiros, robustez | Sinais esparsos             |
+
+
 
 # 6. Estimação de Parâmetros
 
@@ -227,95 +266,112 @@ hist(norms_l, breaks = 40, col = rgb(0.2, 0.7, 0.3, 0.5), border = "white",
 Para cada família, geramos $M = 200$ trajetórias simuladas de tamanho $n = 500$ e estimamos $\mu$ e $\Sigma$ via máxima verossimilhança (MLE). Para a normal e a Laplace, os estimadores coincidem com a média e a covariância amostral (possivelmente com correção). Para a $t$, usamos a média e a covariância amostral como aproximação (o MLE exato é iterativo).
 
 ```{r}
-M    <- 200    # número de réplicas
-n_sim <- 500   # tamanho de cada amostra
-mu0  <- c(0, 0)
-Sig0 <- matrix(c(1, 0.6, 0.6, 1), 2, 2)
-nu0  <- 5
+M     <- 200    # número de réplicas
+n_sim <- 500    # tamanho de cada amostra
+mu0   <- c(0, 0)
+Sig0  <- matrix(c(1, 0.6, 0.6, 1), 2, 2)
+nu0   <- 5
 
-est_mu_norm  <- matrix(NA, M, 2)
-est_mu_t     <- matrix(NA, M, 2)
-est_mu_lap   <- matrix(NA, M, 2)
-
-est_sig11_norm <- est_sig11_t <- est_sig11_lap <- numeric(M)
-est_sig12_norm <- est_sig12_t <- est_sig12_lap <- numeric(M)
+# Armazenar resultados em listas e depois empilhar com dplyr
+resultados <- list()
 
 for (m in 1:M) {
   # Normal
   X <- rmnorm(n_sim, mu0, Sig0)
-  est_mu_norm[m, ] <- colMeans(X)
   S <- cov(X)
-  est_sig11_norm[m] <- S[1,1]
-  est_sig12_norm[m] <- S[1,2]
+  resultados[[length(resultados) + 1]] <- tibble(
+    replica = m, Modelo = "Normal",
+    mu1_hat = mean(X[,1]), mu2_hat = mean(X[,2]),
+    sig11_hat = S[1,1], sig12_hat = S[1,2]
+  )
 
   # t de Student
   X <- rmvt(n_sim, mu0, Sig0, nu = nu0)
-  est_mu_t[m, ] <- colMeans(X)
   S <- cov(X) * (nu0 - 2) / nu0   # correção: Var(t) = nu/(nu-2) * Sigma
-  est_sig11_t[m] <- S[1,1]
-  est_sig12_t[m] <- S[1,2]
+  resultados[[length(resultados) + 1]] <- tibble(
+    replica = m, Modelo = "t de Student (ν = 5)",
+    mu1_hat = mean(X[,1]), mu2_hat = mean(X[,2]),
+    sig11_hat = S[1,1], sig12_hat = S[1,2]
+  )
 
   # Laplace
   X <- rmlaplace(n_sim, mu0, Sig0)
-  est_mu_lap[m, ] <- colMeans(X)
   S <- cov(X) / 2   # correção: Var(Laplace) = 2*Sigma
-  est_sig11_lap[m] <- S[1,1]
-  est_sig12_lap[m] <- S[1,2]
+  resultados[[length(resultados) + 1]] <- tibble(
+    replica = m, Modelo = "Laplace",
+    mu1_hat = mean(X[,1]), mu2_hat = mean(X[,2]),
+    sig11_hat = S[1,1], sig12_hat = S[1,2]
+  )
 }
+
+df_est <- bind_rows(resultados) %>%
+  mutate(Modelo = factor(Modelo, levels = c("Normal", "t de Student (ν = 5)", "Laplace")))
 ```
 
 ## 6.2 Resultados: estimação de $\mu_1$
 
-```{r fig.width=9, fig.height=4}
-par(mfrow = c(1, 3))
-
-hist(est_mu_norm[,1], breaks = 25, col = rgb(0.2,0.4,0.8,0.5), border = "white",
-     main = "Normal", xlab = expression(hat(mu)[1]), freq = FALSE, xlim = c(-0.3, 0.3))
-abline(v = 0, col = "red", lwd = 2)
-
-hist(est_mu_t[,1], breaks = 25, col = rgb(0.8,0.2,0.2,0.5), border = "white",
-     main = expression(paste("t (", nu, "=5)")), xlab = expression(hat(mu)[1]),
-     freq = FALSE, xlim = c(-0.3, 0.3))
-abline(v = 0, col = "red", lwd = 2)
-
-hist(est_mu_lap[,1], breaks = 25, col = rgb(0.2,0.7,0.3,0.5), border = "white",
-     main = "Laplace", xlab = expression(hat(mu)[1]), freq = FALSE, xlim = c(-0.3, 0.3))
-abline(v = 0, col = "red", lwd = 2)
+```{r fig.width=10, fig.height=4, echo=FALSE}
+ggplot(df_est, aes(x = mu1_hat, fill = Modelo)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 25,
+                 color = "white", alpha = 0.7) +
+  geom_vline(xintercept = 0, color = "red", linewidth = 0.8) +
+  facet_wrap(~ Modelo) +
+  coord_cartesian(xlim = c(-0.3, 0.3)) +
+  scale_fill_manual(values = c("Normal" = "#3366CC",
+                               "t de Student (ν = 5)" = "#CC3333",
+                               "Laplace" = "#33AA55")) +
+  labs(x = expression(hat(mu)[1]), y = "Densidade",
+       title = expression(paste("Distribuição de ", hat(mu)[1], " ao longo de M = 200 réplicas"))) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        strip.text = element_text(size = 11, face = "bold"))
 ```
 
 ## 6.3 Resultados: estimação de $\Sigma_{11}$ e $\Sigma_{12}$
 
-```{r fig.width=9, fig.height=4}
-par(mfrow = c(1, 3))
+```{r fig.width=10, fig.height=4, echo=FALSE}
+df_sig <- df_est %>%
+  select(replica, Modelo, sig11_hat, sig12_hat) %>%
+  pivot_longer(cols = c(sig11_hat, sig12_hat),
+               names_to = "Parametro", values_to = "Estimativa") %>%
+  mutate(Parametro = recode(Parametro,
+                            "sig11_hat" = "Σ[11]~(verdadeiro == 1)",
+                            "sig12_hat" = "Σ[12]~(verdadeiro == 0.6)"))
 
-boxplot(data.frame(Normal = est_sig11_norm, t = est_sig11_t, Laplace = est_sig11_lap),
-        col = c(rgb(0.2,0.4,0.8,0.5), rgb(0.8,0.2,0.2,0.5), rgb(0.2,0.7,0.3,0.5)),
-        main = expression(paste("Estimação de ", Sigma[11], " (verdadeiro = 1)")),
-        ylab = expression(hat(Sigma)[11]))
-abline(h = 1, col = "red", lwd = 2, lty = 2)
+# Linhas de referência
+ref_lines <- tibble(
+  Parametro = c("Σ[11]~(verdadeiro == 1)", "Σ[12]~(verdadeiro == 0.6)"),
+  valor_ref = c(1, 0.6)
+)
 
-boxplot(data.frame(Normal = est_sig12_norm, t = est_sig12_t, Laplace = est_sig12_lap),
-        col = c(rgb(0.2,0.4,0.8,0.5), rgb(0.8,0.2,0.2,0.5), rgb(0.2,0.7,0.3,0.5)),
-        main = expression(paste("Estimação de ", Sigma[12], " (verdadeiro = 0.6)")),
-        ylab = expression(hat(Sigma)[12]))
-abline(h = 0.6, col = "red", lwd = 2, lty = 2)
+ggplot(df_sig, aes(x = Modelo, y = Estimativa, fill = Modelo)) +
+  geom_boxplot(alpha = 0.7, outlier.size = 0.8) +
+  geom_hline(data = ref_lines, aes(yintercept = valor_ref),
+             color = "red", linetype = "dashed", linewidth = 0.8) +
+  facet_wrap(~ Parametro, labeller = label_parsed, scales = "free_y") +
+  scale_fill_manual(values = c("Normal" = "#3366CC",
+                               "t de Student (ν = 5)" = "#CC3333",
+                               "Laplace" = "#33AA55")) +
+  labs(y = "Estimativa", x = NULL) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        strip.text = element_text(size = 11, face = "bold"),
+        axis.text.x = element_text(angle = 15, hjust = 1))
 ```
 
 ## 6.4 Tabela resumo
 
 ```{r}
-resumo <- data.frame(
-  Modelo   = c("Normal", "t (nu=5)", "Laplace"),
-  `Viés mu1`     = round(c(mean(est_mu_norm[,1]), mean(est_mu_t[,1]),
-                            mean(est_mu_lap[,1])), 4),
-  `DP mu1`       = round(c(sd(est_mu_norm[,1]), sd(est_mu_t[,1]),
-                            sd(est_mu_lap[,1])), 4),
-  `Média Sig11`  = round(c(mean(est_sig11_norm), mean(est_sig11_t),
-                            mean(est_sig11_lap)), 4),
-  `Média Sig12`  = round(c(mean(est_sig12_norm), mean(est_sig12_t),
-                            mean(est_sig12_lap)), 4),
-  check.names = FALSE
-)
+resumo <- df_est %>%
+  group_by(Modelo) %>%
+  summarise(
+    `Viés mu1`    = round(mean(mu1_hat), 4),
+    `DP mu1`      = round(sd(mu1_hat), 4),
+    `Média sigma11`  = round(mean(sig11_hat), 4),
+    `Média sigma12`  = round(mean(sig12_hat), 4),
+    .groups = "drop"
+  )
+
 knitr::kable(resumo, caption = "Resumo da estimação via simulação (M = 200, n = 500)")
 ```
 
