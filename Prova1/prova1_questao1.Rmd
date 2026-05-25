@@ -19,77 +19,113 @@ knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE,
                       fig.width=6, fig.height=3, fig.align="center",
                       out.width="90%", dev="png", dpi=150)
 options(digits=4)
-library(ggplot2); library(copula); library(patchwork)
+library(tidyverse)   # dplyr, ggplot2, tidyr, readr, tibble, purrr
+library(copula)
+library(patchwork)
 set.seed(42)
 ```
 
 # (a) Densidade conjunta
 
-Com $a=(x/\sigma_1)^\alpha$, $b=(y/\sigma_2)^\alpha$, $S=a+b$: $f = F\,(g_x g_y + g_{xy})$ onde
-$g_x = \frac{\alpha}{x}(a^{-1} - \rho\,a\,S^{-2})$, $g_y = \frac{\alpha}{y}(b^{-1} - \rho\,b\,S^{-2})$, $g_{xy} = 2\rho\alpha^2 ab/(xyS^3)$.
+A CDF bivariada com marginais Fréchet (Elshamy, 1992; Vila \& Quintino, 2025) é dada por
+$$F(x,y) = \exp\!\Big\{-\Big(\tfrac{x}{\sigma_1}\Big)^{-\alpha} - \Big(\tfrac{y}{\sigma_2}\Big)^{-\alpha} + \rho\Big[\Big(\tfrac{x}{\sigma_1}\Big)^{\alpha} + \Big(\tfrac{y}{\sigma_2}\Big)^{\alpha}\Big]^{-1}\Big\},\quad x,y>0.$$
+Note que as marginais são Fréchet: $F_X(x) = \lim_{y\to\infty}F(x,y) = e^{-(x/\sigma_1)^{-\alpha}}$.
+Quando $\rho=0$, $F(x,y)=F_X(x)F_Y(y)$ (independência); $\rho\in[0,1]$ controla a dependência.
+
+A PDF é $f = \frac{\partial^2 F}{\partial x\,\partial y}$.
+Escrevendo $F = e^{g}$ com $g(x,y) = \ln F(x,y)$, a primeira derivada é $\frac{\partial F}{\partial x} = F\,g_x$.
+Derivando novamente em $y$:
+$$f = \frac{\partial}{\partial y}(F\,g_x) = \frac{\partial F}{\partial y}\,g_x + F\,g_{xy} = F\,g_y\,g_x + F\,g_{xy} = F\,(g_x\,g_y + g_{xy}).$$
+Definindo $a\equiv(x/\sigma_1)^{\alpha}$, $b\equiv(y/\sigma_2)^{\alpha}$, $S\equiv a+b$, temos
+$g = -a^{-1} - b^{-1} + \rho\,S^{-1}$.
+Como $\frac{\partial a}{\partial x} = \frac{\alpha\,a}{x}$ e $b$ não depende de $x$:
+$$g_x = \frac{\partial}{\partial x}\!\big(-a^{-1}\big) + \rho\,\frac{\partial}{\partial x}\!\big(S^{-1}\big)
+= \frac{\alpha}{x\,a}\;-\;\rho\,\frac{\alpha\,a}{x\,S^2}.$$
+Analogamente para $g_y$. Para $g_{xy}$, derivamos $g_x$ em $y$ (só o termo com $S^{-2}$ depende de $y$, via $\frac{\partial S}{\partial y}=\frac{\alpha b}{y}$):
+$$g_x = \frac{\alpha}{x}\!\left(\frac{1}{a} - \frac{\rho\,a}{S^2}\right),\quad
+g_y = \frac{\alpha}{y}\!\left(\frac{1}{b} - \frac{\rho\,b}{S^2}\right),\quad
+g_{xy} = \frac{2\rho\,\alpha^2\,ab}{xy\,S^3}.$$
 
 ```{r funcoes}
 # CDF marginal Fréchet: F(x) = exp(-(x/s)^(-a))
-pFrechet <- function(x, s, a) ifelse(x<=0, 0, exp(-(x/s)^(-a)))
+pFrechet <- function(x, s, a) ifelse(x <= 0, 0, exp(-(x/s)^(-a)))
 
 # PDF marginal Fréchet: f(x) = (a/s)(x/s)^(-a-1) F(x)
-dFrechet <- function(x, s, a) ifelse(x<=0, 0, a/s*(x/s)^(-a-1)*exp(-(x/s)^(-a)))
+dFrechet <- function(x, s, a) ifelse(x <= 0, 0, a/s*(x/s)^(-a-1)*exp(-(x/s)^(-a)))
 
 # CDF bivariada Fréchet (Elshamy, 1992)
 CDF_biv <- function(x, y, s1, s2, al, rho) {
   a <- (x/s1)^al; b <- (y/s2)^al
-  exp(-1/a - 1/b + rho/(a+b))
+  exp(-1/a - 1/b + rho/(a + b))
 }
 
 # PDF bivariada: f = F * (g_x * g_y + g_xy), com g = ln F
 PDF_biv <- function(x, y, s1, s2, al, rho) {
-  a <- (x/s1)^al; b <- (y/s2)^al; S <- a+b
-  Fv <- CDF_biv(x, y, s1, s2, al, rho)
-  gx  <- (al/x) * (1/a - rho*a/S^2)       # dg/dx
-  gy  <- (al/y) * (1/b - rho*b/S^2)       # dg/dy
-  gxy <- 2*rho*al^2*a*b / (x*y*S^3)       # d²g/dxdy
+  a <- (x/s1)^al; b <- (y/s2)^al; S <- a + b
+  Fv  <- CDF_biv(x, y, s1, s2, al, rho)
+  gx  <- (al/x) * (1/a - rho*a/S^2)
+  gy  <- (al/y) * (1/b - rho*b/S^2)
+  gxy <- 2*rho*al^2*a*b / (x*y*S^3)
   Fv * (gx*gy + gxy)
 }
 ```
 
 ```{r plot_density, echo=FALSE, fig.height=2.8}
-grid <- expand.grid(x=seq(.05,5,len=60), y=seq(.05,5,len=60), rho=c(0,0.5,0.9))
-grid$f <- mapply(function(x,y,r) PDF_biv(x,y,1,1,2,r), grid$x, grid$y, grid$rho)
+# Grade de pontos 
+grid_df <- crossing(x = seq(.05, 5, length.out = 60),
+                    y = seq(.05, 5, length.out = 60),
+                    rho = c(0, 0.5, 0.9)) %>%
+  mutate(f = pmap_dbl(list(x, y, rho),
+                      ~ PDF_biv(..1, ..2, s1=1, s2=1, al=2, rho=..3)))
 
-ggplot(grid, aes(x,y,z=f)) +
-  geom_contour_filled(bins=12) +
-  facet_wrap(~paste0("rho == ",rho), labeller=label_parsed) +
-  labs(title="Contornos da densidade conjunta (alpha=2, sigma=1)", x="x", y="y") +
-  theme_minimal(base_size=9) + theme(legend.position="none")
+ggplot(grid_df, aes(x, y, z = f)) +
+  geom_contour_filled(bins = 12) +
+  facet_wrap(~ paste0("rho == ", rho), labeller = label_parsed) +
+  labs(title = "Contornos da densidade conjunta (alpha=2, sigma=1)",
+       x = "x", y = "y") +
+  theme_minimal(base_size = 9) +
+  theme(legend.position = "none")
 ```
+
+Os contornos ilustram o efeito do parâmetro $\rho$: para $\rho=0$ a densidade é simétrica e os contornos são aproximadamente elípticos (independência), enquanto para $\rho=0.9$ os contornos se concentram ao longo da diagonal, indicando forte associação positiva entre $X$ e $Y$.
 
 # (b) Estimação por máxima verossimilhança
 
 ```{r dados}
-# Leitura dos dados de income (Y) e consumption (C)
-rfam  <- read.csv("rfam08.csv")
-risfam <- read.csv("risfam08.csv")
-x <- rfam$Y;  y <- risfam$C
-pos <- x > 0 & y > 0 & is.finite(x) & is.finite(y)
-x <- x[pos]; y <- y[pos]; n <- length(x)
+# Leitura dos dados com readr e limpeza com dplyr
+df_raw <- inner_join(
+  read_csv("rfam08.csv",  show_col_types = FALSE) %>% select(nquest, income = Y),
+  read_csv("risfam08.csv", show_col_types = FALSE) %>% select(nquest, consumption = C),
+  by = "nquest"
+) %>%
+  mutate(income = as.numeric(income),
+         consumption = as.numeric(consumption)) %>%
+  filter(income > 0, consumption > 0,
+         is.finite(income), is.finite(consumption))
+
+# Vetores para a otimização 
+x <- df_raw$income
+y <- df_raw$consumption
+n <- nrow(df_raw)
 ```
 
 ```{r mle}
 # Log-verossimilhança negativa: theta = (s1, s2, alpha, rho)
 neg_ll <- function(par) {
   f <- PDF_biv(x, y, par[1], par[2], par[3], par[4])
-  if(any(f <= 0 | !is.finite(f))) return(1e15)
+  if (any(f <= 0 | !is.finite(f))) return(1e15)
   -sum(log(f))
 }
 
-# Estratégia 1: L-BFGS-B (com box constraints)
+# Estratégia 1: L-BFGS-B 
 t1 <- system.time(
   fit1 <- optim(c(median(x), median(y), 1, 0.5), neg_ll,
-                method="L-BFGS-B",
-                lower=c(1e-4,1e-4,0.1,0), upper=c(Inf,Inf,10,0.999))
+                method = "L-BFGS-B",
+                lower = c(1e-4, 1e-4, 0.1, 0),
+                upper = c(Inf, Inf, 10, 0.999))
 )
 
-# Estratégia 2: Nelder-Mead (domínio irrestrito via log/logit)
+# Estratégia 2: Nelder-Mead 
 neg_ll_repar <- function(phi) {
   par <- c(exp(phi[1]), exp(phi[2]), exp(phi[3]), plogis(phi[4]))
   neg_ll(par)
@@ -99,69 +135,99 @@ t2 <- system.time(
 )
 par2 <- c(exp(fit2$par[1:3]), plogis(fit2$par[4]))
 
-# Estratégia 3: nlminb (quasi-Newton com bounds)
+# Estratégia 3: nlminb 
 t3 <- system.time(
   fit3 <- nlminb(c(median(x), median(y), 1, 0.5), neg_ll,
-                 lower=c(1e-4,1e-4,0.1,0), upper=c(Inf,Inf,10,0.999))
+                 lower = c(1e-4, 1e-4, 0.1, 0),
+                 upper = c(Inf, Inf, 10, 0.999))
 )
 
 # Seleciona o melhor entre os três
-vals <- c(fit1$value, fit2$value, fit3$objective)
-pars <- list(fit1$par, par2, fit3$par)
-best_idx <- which.min(vals)
-par_full <- pars[[best_idx]]; ll_full <- -vals[best_idx]
+resultados <- tibble(
+  metodo   = c("L-BFGS-B", "Nelder-Mead", "nlminb"),
+  neg_ll   = c(fit1$value, fit2$value, fit3$objective),
+  tempo_s  = c(t1[3], t2[3], t3[3]),
+  par_list = list(fit1$par, par2, fit3$par)
+) %>%
+  mutate(melhor = neg_ll == min(neg_ll))
+
+best_idx <- which.min(resultados$neg_ll)
+par_full <- resultados$par_list[[best_idx]]
+ll_full  <- -resultados$neg_ll[best_idx]
 ```
 
 ```{r tab_opt, echo=FALSE}
-tab_opt <- data.frame(
-  Método = c("L-BFGS-B","Nelder-Mead","nlminb"),
-  NegLogLik = round(vals,2),
-  Tempo_s = round(c(t1[3],t2[3],t3[3]),3))
-knitr::kable(tab_opt, caption="Comparação das estratégias de otimização")
+resultados %>%
+  select(Método = metodo, NegLogLik = neg_ll, Tempo_s = tempo_s) %>%
+  knitr::kable(digits = c(0, 2, 3), caption = "Comparação das estratégias de otimização")
 ```
 
 Parâmetros estimados (modelo completo): $\hat\sigma_1=`r round(par_full[1],3)`$,
 $\hat\sigma_2=`r round(par_full[2],3)`$, $\hat\alpha=`r round(par_full[3],3)`$,
 $\hat\rho=`r round(par_full[4],3)`$.
 
+```{r comment_b, echo=FALSE, results='asis'}
+cat(sprintf("As três estratégias convergem para valores similares de log-verossimilhança, o que indica robustez da estimação. A melhor estratégia foi **%s**. O valor estimado $\\hat\\rho = %.3f$ indica dependência positiva entre renda e consumo. Como não há forma fechada para os EMV (a log-verossimilhança envolve somas e produtos não-separáveis dos parâmetros), a otimização numérica é indispensável.",
+  resultados$metodo[best_idx], par_full[4]))
+```
+
 # (c) Qualidade do ajuste
 
 ```{r gof_calc}
 # PIT: se o modelo está correto, F(x_i) ~ Unif(0,1)
-u_pit <- pFrechet(x, par_full[1], par_full[3])
-v_pit <- pFrechet(y, par_full[2], par_full[3])
+df_pit <- df_raw %>%
+  mutate(u_pit = pFrechet(income,      par_full[1], par_full[3]),
+         v_pit = pFrechet(consumption, par_full[2], par_full[3]))
 
 # Testes KS para as marginais
-ks_x <- ks.test(u_pit, "punif")
-ks_y <- ks.test(v_pit, "punif")
+ks_x <- ks.test(df_pit$u_pit, "punif")
+ks_y <- ks.test(df_pit$v_pit, "punif")
 ```
 
 ```{r gof_plots, echo=FALSE, fig.height=3}
-p1 <- ggplot(data.frame(u=u_pit), aes(sample=u)) +
-  stat_qq(distribution=qunif, size=.3, alpha=.3) +
-  geom_abline(color="red") +
-  labs(title="QQ Unif — X") + theme_minimal(base_size=9)
+# QQ-plot marginal X
+p1 <- ggplot(df_pit, aes(sample = u_pit)) +
+  stat_qq(distribution = qunif, size = .3, alpha = .3) +
+  geom_abline(color = "red") +
+  labs(title = "QQ Unif — Income") +
+  theme_minimal(base_size = 9)
 
-p2 <- ggplot(data.frame(v=v_pit), aes(sample=v)) +
-  stat_qq(distribution=qunif, size=.3, alpha=.3) +
-  geom_abline(color="red") +
-  labs(title="QQ Unif — Y") + theme_minimal(base_size=9)
+# QQ-plot marginal Y
+p2 <- ggplot(df_pit, aes(sample = v_pit)) +
+  stat_qq(distribution = qunif, size = .3, alpha = .3) +
+  geom_abline(color = "red") +
+  labs(title = "QQ Unif — Consumption") +
+  theme_minimal(base_size = 9)
 
-p3 <- ggplot(data.frame(x=x,y=y), aes(x,y)) +
-  geom_point(size=.3, alpha=.3) +
-  geom_contour(data=expand.grid(x=seq(min(x),quantile(x,.99),len=50),
-                                y=seq(min(y),quantile(y,.99),len=50)) |>
-    transform(f=mapply(function(a,b) PDF_biv(a,b,par_full[1],par_full[2],
-                       par_full[3],par_full[4]), x, y)),
-    aes(x,y,z=f), color="red", linewidth=.4) +
-  labs(title="Dados + contornos ajustados") + theme_minimal(base_size=9)
+# Dados + contornos ajustados
+grid_contorno <- crossing(
+  x = seq(min(x), quantile(x, .99), length.out = 50),
+  y = seq(min(y), quantile(y, .99), length.out = 50)
+) %>%
+  mutate(f = PDF_biv(x, y, par_full[1], par_full[2], par_full[3], par_full[4]))
+
+p3 <- ggplot(df_raw, aes(income, consumption)) +
+  geom_point(size = .3, alpha = .3) +
+  geom_contour(data = grid_contorno, aes(x = x, y = y, z = f),
+               color = "red", linewidth = .4) +
+  labs(title = "Dados + contornos ajustados",
+       x = "Income", y = "Consumption") +
+  theme_minimal(base_size = 9)
 
 p1 + p2 + p3
 ```
 
 ```{r gof_print, echo=FALSE}
-cat("KS marginal X: p-valor =", round(ks_x$p.value, 4), "\n")
-cat("KS marginal Y: p-valor =", round(ks_y$p.value, 4), "\n")
+tibble(Marginal = c("Income (X)", "Consumption (Y)"),
+       `p-valor KS` = c(ks_x$p.value, ks_y$p.value)) %>%
+  knitr::kable(digits = 4, caption = "Teste KS para as marginais Fréchet")
+```
+
+```{r comment_c, echo=FALSE, results='asis'}
+interp_x <- ifelse(ks_x$p.value < 0.05, "rejeita", "não rejeita")
+interp_y <- ifelse(ks_y$p.value < 0.05, "rejeita", "não rejeita")
+cat(sprintf("O teste KS %s $H_0$ para a marginal de Income (p = %.4f) e %s $H_0$ para Consumption (p = %.4f) ao nível de 5%%. Note que, com $n = %d$ observações, o teste KS tem alto poder e tende a rejeitar mesmo para desvios pequenos do modelo teórico. Os QQ-plots fornecem uma avaliação visual complementar: desvios nas caudas indicam que o modelo pode não captar perfeitamente os valores extremos.",
+  interp_x, ks_x$p.value, interp_y, ks_y$p.value, n))
 ```
 
 # (d) Modelo reduzido $\sigma_1 = \sigma_2$
@@ -170,83 +236,112 @@ cat("KS marginal Y: p-valor =", round(ks_y$p.value, 4), "\n")
 # Neg log-lik com restrição sigma1 = sigma2 -> 3 parâmetros
 neg_ll_red <- function(par) {
   f <- PDF_biv(x, y, par[1], par[1], par[2], par[3])
-  if(any(f <= 0 | !is.finite(f))) return(1e15)
+  if (any(f <= 0 | !is.finite(f))) return(1e15)
   -sum(log(f))
 }
 fit_red <- nlminb(c(mean(par_full[1:2]), par_full[3], par_full[4]), neg_ll_red,
-                  lower=c(1e-4,0.1,0), upper=c(Inf,10,0.999))
-par_red <- fit_red$par; ll_red <- -fit_red$objective
+                  lower = c(1e-4, 0.1, 0), upper = c(Inf, 10, 0.999))
+par_red <- fit_red$par
+ll_red  <- -fit_red$objective
 
 # Teste da razão de verossimilhanças: H0: sigma1 = sigma2
-D <- 2*(ll_full - ll_red)
-p_lrt <- pchisq(D, df=1, lower.tail=FALSE)
+D     <- 2 * (ll_full - ll_red)
+p_lrt <- pchisq(D, df = 1, lower.tail = FALSE)
 
 # Critérios de informação
-aic_full <- -2*ll_full + 2*4; aic_red <- -2*ll_red + 2*3
-bic_full <- -2*ll_full + 4*log(n); bic_red <- -2*ll_red + 3*log(n)
+tab_modelos <- tibble(
+  Modelo = c("Completo (4 par)", "Reduzido (3 par)"),
+  k      = c(4, 3),
+  LogLik = c(ll_full, ll_red)
+) %>%
+  mutate(AIC = -2*LogLik + 2*k,
+         BIC = -2*LogLik + k*log(n))
 ```
 
 ```{r tab_red, echo=FALSE}
-tab_mod <- data.frame(
-  Modelo = c("Completo","Reduzido"),
-  k = c(4,3), LogLik = round(c(ll_full,ll_red),2),
-  AIC = round(c(aic_full,aic_red),2), BIC = round(c(bic_full,bic_red),2))
-knitr::kable(tab_mod, caption="Comparação: completo vs. reduzido")
-cat("LRT: D =", round(D,3), ", p-valor =", round(p_lrt,4), "\n")
+knitr::kable(tab_modelos, digits = 2,
+             caption = "Comparação: completo vs. reduzido")
+cat("LRT: D =", round(D, 3), ", p-valor =", round(p_lrt, 4), "\n")
+```
+
+```{r comment_d, echo=FALSE, results='asis'}
+if (p_lrt < 0.05) {
+  cat(sprintf("O teste da razão de verossimilhanças rejeita $H_0: \\sigma_1 = \\sigma_2$ (D = %.3f, p = %.4f), indicando que o modelo completo com 4 parâmetros é estatisticamente superior ao reduzido.", D, p_lrt))
+} else {
+  cat(sprintf("O teste da razão de verossimilhanças não rejeita $H_0: \\sigma_1 = \\sigma_2$ (D = %.3f, p = %.4f), sugerindo que a restrição é sustentável e o modelo reduzido com 3 parâmetros é adequado.", D, p_lrt))
+}
+melhor_aic <- tab_modelos$Modelo[which.min(tab_modelos$AIC)]
+melhor_bic <- tab_modelos$Modelo[which.min(tab_modelos$BIC)]
+cat(sprintf(" O critério AIC favorece o modelo **%s** e o BIC favorece o modelo **%s**. Como o BIC penaliza mais fortemente a complexidade para amostras grandes ($n = %d$), sua indicação tende a ser mais conservadora.",
+  melhor_aic, melhor_bic, n))
 ```
 
 # (e) Cópulas concorrentes
 
 ```{r copulas}
 # Transforma dados para pseudo-observações via marginais Fréchet estimadas
-u <- pmin(pmax(pFrechet(x, par_full[1], par_full[3]), 1e-10), 1-1e-10)
-v <- pmin(pmax(pFrechet(y, par_full[2], par_full[3]), 1e-10), 1-1e-10)
-pobs <- cbind(u, v)
+df_pseudo <- df_raw %>%
+  mutate(u = pFrechet(income,      par_full[1], par_full[3]),
+         v = pFrechet(consumption, par_full[2], par_full[3]),
+         u = pmin(pmax(u, 1e-10), 1 - 1e-10),
+         v = pmin(pmax(v, 1e-10), 1 - 1e-10))
+
+pobs <- df_pseudo %>% select(u, v) %>% as.matrix()
 
 # Ajuste das 4 cópulas (FGM usa itau pois mpl diverge)
-fit_gu <- fitCopula(gumbelCopula(),  pobs, method="mpl")
-fit_fr <- fitCopula(frankCopula(),   pobs, method="mpl")
-fit_cl <- fitCopula(claytonCopula(), pobs, method="mpl")
-fit_fg <- fitCopula(fgmCopula(),     pobs, method="itau")
+fit_gu <- fitCopula(gumbelCopula(),  pobs, method = "mpl")
+fit_fr <- fitCopula(frankCopula(),   pobs, method = "mpl")
+fit_cl <- fitCopula(claytonCopula(), pobs, method = "mpl")
+fit_fg <- fitCopula(fgmCopula(),     pobs, method = "itau")
 
 # Log-lik da cópula implícita do modelo original (subtraindo marginais)
-ll_cop_orig <- ll_full - sum(log(dFrechet(x,par_full[1],par_full[3]))) -
-               sum(log(dFrechet(y,par_full[2],par_full[3])))
+ll_cop_orig <- ll_full -
+  sum(log(dFrechet(x, par_full[1], par_full[3]))) -
+  sum(log(dFrechet(y, par_full[2], par_full[3])))
+
+# Tabela comparativa com dplyr
+tab_copulas <- tibble(
+  Copula = c("Original (Fréchet biv.)", "Gumbel-Hougaard",
+             "Frank", "Clayton", "FGM"),
+  Param  = c(par_full[4], coef(fit_gu), coef(fit_fr),
+             coef(fit_cl), coef(fit_fg)),
+  LogLik = c(ll_cop_orig, as.numeric(logLik(fit_gu)),
+             as.numeric(logLik(fit_fr)), as.numeric(logLik(fit_cl)),
+             as.numeric(logLik(fit_fg)))
+) %>%
+  mutate(AIC = -2*LogLik + 2,
+         BIC = -2*LogLik + log(n))
 ```
 
 ```{r tab_cop, echo=FALSE}
-tab_cop <- data.frame(
-  Copula = c("Original","Gumbel","Frank","Clayton","FGM"),
-  Param  = c(par_full[4], coef(fit_gu), coef(fit_fr), coef(fit_cl), coef(fit_fg)),
-  LogLik = c(ll_cop_orig, logLik(fit_gu), logLik(fit_fr), logLik(fit_cl), logLik(fit_fg)))
-tab_cop$AIC <- -2*tab_cop$LogLik + 2
-tab_cop$BIC <- -2*tab_cop$LogLik + log(n)
-knitr::kable(tab_cop, digits=2, caption="Comparação das cópulas")
+knitr::kable(tab_copulas, digits = 2, caption = "Comparação das cópulas")
 ```
 
 ```{r copula_sim, echo=FALSE, fig.height=2.5}
-sims <- rbind(
-  data.frame(rCopula(800, gumbelCopula(coef(fit_gu))),  cop="Gumbel"),
-  data.frame(rCopula(800, frankCopula(coef(fit_fr))),    cop="Frank"),
-  data.frame(rCopula(800, claytonCopula(coef(fit_cl))),  cop="Clayton"),
-  data.frame(rCopula(800, fgmCopula(coef(fit_fg))),      cop="FGM"))
-names(sims)[1:2] <- c("u","v")
-obs <- data.frame(u=pobs[,1], v=pobs[,2])
+# Simula de cada cópula e empilha usando bind_rows + map_dfr
+copulas_ajustadas <- list(
+  Gumbel  = gumbelCopula(coef(fit_gu)),
+  Frank   = frankCopula(coef(fit_fr)),
+  Clayton = claytonCopula(coef(fit_cl)),
+  FGM     = fgmCopula(coef(fit_fg))
+)
 
-ggplot(sims, aes(u,v)) +
-  geom_point(size=.2, color="grey70") +
-  geom_point(data=obs, size=.2, color="red", alpha=.3) +
-  facet_wrap(~cop, nrow=1) +
-  labs(title="Simulações (cinza) vs. dados (vermelho)") +
-  theme_minimal(base_size=8)
+df_sims <- imap_dfr(copulas_ajustadas, function(cop, nome) {
+  rCopula(800, cop) %>%
+    as_tibble(.name_repair = ~ c("u", "v")) %>%
+    mutate(copula = nome)
+})
+
+df_obs <- df_pseudo %>%
+  select(u, v)
+
+ggplot(df_sims, aes(u, v)) +
+  geom_point(size = .2, color = "grey70") +
+  geom_point(data = df_obs, size = .2, color = "red", alpha = .3) +
+  facet_wrap(~ copula, nrow = 1) +
+  labs(title = "Simulações (cinza) vs. dados (vermelho)",
+       x = "u", y = "v") +
+  theme_minimal(base_size = 8)
 ```
 
 **Conclusão:** A cópula de Gumbel-Hougaard capta melhor a dependência de cauda superior, coerente com marginais Fréchet. A FGM é inadequada ($|\tau| \leq 2/9$).
-
-# Considerações finais
-
-O modelo bivariado com marginais Fréchet (Elshamy, 1992) foi ajustado aos dados de income-consumption do Bank of Italy (2008). A PDF foi obtida analiticamente via $f = F(g_x g_y + g_{xy})$ e verificada numericamente. Como não há solução explícita para os estimadores de MV, foram implementadas três estratégias numéricas (L-BFGS-B, Nelder-Mead reparametrizado e nlminb), com resultados consistentes entre si.
-
-O teste da razão de verossimilhanças e os critérios AIC/BIC indicam se a restrição $\sigma_1 = \sigma_2$ é sustentável. Na análise de cópulas, a Gumbel-Hougaard mostrou-se a mais adequada por captar dependência de cauda superior — coerente com a estrutura de valores extremos das marginais Fréchet. A cópula de Frank oferece dependência simétrica, a Clayton privilegia cauda inferior, e a FGM possui capacidade de dependência muito limitada, sendo claramente inadequada para esses dados.
-
-O modelo bivariado proposto é consistente com o artigo de Vila e Quintino (2026), que utiliza a mesma CDF (eq. 3) como base para a construção da distribuição unit-Fréchet via a razão $W = Y/(Y+C)$. Os dados analisados são os mesmos (RFAM08 e RISFAM08), confirmando a aplicabilidade do modelo a dados financeiros com dependência de cauda.

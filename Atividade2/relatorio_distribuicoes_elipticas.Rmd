@@ -1,6 +1,6 @@
 ---
 title: "Geração e Análise de Distribuições Elípticas"
-author: "Relatório — Aula 8"
+author: "Davi Wentrick Feijó"
 date: "`r format(Sys.Date(), '%d/%m/%Y')`"
 output:
   html_document:
